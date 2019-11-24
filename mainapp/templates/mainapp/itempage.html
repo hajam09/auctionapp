@@ -1,0 +1,122 @@
+{% extends "mainapp/base.html" %}
+{% load static %}
+{% block content %}
+<div class="container" id="searchresult">
+    <div>
+        <ul class="list-group list-group-flush" id="resultlist"></ul>
+    </div>
+</div>
+<div class="container" id="bidding activity">
+    <h3>Recent Bidding Activity</h3>
+    <table class="table" id="table">
+        <thead>
+            <tr>
+                <th scope="col">Bidder</th>
+                <th scope="col">Bid Price</th>
+            </tr>
+        </thead>
+        <tbody id="bidders">
+            <tr style="display:none;"><th scope="row">X</th><td>X</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<script type="text/javascript">
+    window.onload = function() {
+        var itemid = sessionStorage.getItem("itemid");
+        $.ajax({
+            type: "GET",
+            data: {
+                itemid: itemid,
+            },
+            success: function(data) {
+                for (var j = 0; j < data.items.length; j++) {
+                    $("#resultlist").append('<div class="row" id=' + data.items[j].id + '> <br> <div class="col-sm-5"><img alt="" src=' + data.items[j].imageurl + ' style="height: 400px; width: 400px" /></div> <div class="col-sm-7"> <h4>' + data.items[j].title + '</h4> <p>' + data.items[j].description.split(".") + '</p> <h4>Current Price: <b id="currentprice">£ ' + data.items[j].price + '</b></h4> <h4 style="display:inline-block;margin-right:10px;">Time Left: </h4> <h4 id="countdown" style="display:inline-block; color:red"></h4> <p style="display:inline-block;">&nbsp(' + data.items[j].expiredate.replace("T", " ").replace("Z", "") + ')</p> <br> <br> <div id="bidenter" class="input-group"> <input type="number" step="0.01" class="form-control" id="userbidvalue" placeholder="Enter your max. bid"> <span class="input-group-btn"> <button onclick="updatebid(this);return false;" class="btn btn-primary" type="button">Submit Bid</button> </span> </div> </div>');
+                }
+                // Set the date we're counting down to
+                var countDownDate = new Date(data.items[0].expiredate).getTime();
+
+                // Update the count down every 1 second
+                var x = setInterval(function() {
+                    // Get today's date and time
+                    var now = new Date().getTime();
+
+                    // Find the distance between now and the count down date
+                    var distance = countDownDate - now;
+
+                    // Time calculations for days, hours, minutes and seconds
+                    var days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                    var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    var seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                    // Output the result in an element with id="demo"
+                    document.getElementById("countdown").innerHTML = days + "d " + hours + "h " + minutes + "m " + seconds + "s ";
+
+                    // If the count down is over, write some text
+                    if (distance < 0) {
+                        clearInterval(x);
+                        document.getElementById("countdown").innerHTML = "Bidding has ended!";
+                        document.getElementById("bidenter").remove();
+                    }
+
+                }, 1000);
+
+                var listofbidders = data.items[0].bidders.split(",");
+
+                var counter = 0;
+
+                for (var i = listofbidders.length - 2; i >= 0; --i) {
+                    var seperate = listofbidders[i].split(" ");
+                    var bidderid = seperate[0];
+                    var bidderprice = seperate[1];
+                    $("table").find('tbody').append("<tr><th scope='row'>" + bidderid + "</th><td>£ " + bidderprice + "</td></tr>");
+
+                    if (counter > 3) {
+                        return;
+                    }
+                    var counter = counter + 1;
+                }
+            }
+        })
+    }
+
+    var updatebid = function(buttonElement) {
+
+        "{% if user.is_authenticated %}"
+        var pkvalue = buttonElement.parentElement.parentElement.parentElement.parentElement.id;
+        var userbidvalue = document.getElementById("userbidvalue").value;
+        if (userbidvalue != null && userbidvalue != "") {
+            $.ajax({
+                type: "PUT",
+                data: {
+                    userbidvalue: userbidvalue,
+                    pkvalue: pkvalue,
+                },
+                success: function(data) {
+                    if (data == "Your bidding value is too small!") {
+                        alert("Your bidding value is too small!");
+                    } else {
+                        document.getElementById("currentprice").innerHTML = "£ " + data.items.newprice.toFixed(2);
+                        document.getElementById("userbidvalue").value = "";
+                        $("<tr><th scope='row'>" + data.items.bidderid + "</th><td>£ " + data.items.newprice.toFixed(2) + "</td></tr>").insertBefore('table > tbody > tr:first');
+
+                        var table = document.getElementById("table");
+                        var rowCount = table.rows.length;
+                        if (rowCount>=5) {
+                            table.deleteRow(rowCount - 1);
+                        }
+                    }
+                }
+            })
+        } else {
+            alert("Please enter your max bid!");
+            return false;
+        }
+        "{% else %}"
+        var url = "{% url 'mainapp:login' %}";
+        document.location.href = url;
+        "{% endif %}"
+    }
+</script>
+{% endblock %}

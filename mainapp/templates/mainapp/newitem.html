@@ -1,0 +1,108 @@
+{% extends "mainapp/base.html" %}
+{% load static %}
+{% block content %}
+<style type="text/css">
+    .div-inline {
+        display: inline-block;
+    }
+</style>
+<div class="container">
+    <form class="form-horizontal" method="post" enctype="multipart/form-data" action="{% url 'mainapp:new_item' %}">
+        {% csrf_token %}
+        <h2>Add New Item</h2>
+        <div class="form-group">
+            <label for="title" class="col-sm-3 control-label">Item Name</label>
+            <div class="col-sm-9">
+                <input type="text" id="title" name="title" placeholder="Item Name" class="form-control" maxlength="1000" />
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="description" class="col-sm-3 control-label">Item Description</label>
+            <div class="col-sm-9">
+                <textarea class="form-control" rows="5" id="description" name="description"></textarea>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="birthDate" class="col-sm-3 control-label">Pick End Date</label>
+            <div class="col-sm-9">
+                <input type="datetime-local" id="expiredate" name="expiredate" class="form-control" required/>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="birthDate" class="col-sm-3 control-label">Starting Price £</label>
+            <div class="col-sm-9">
+                <input type="text" id="price" name="price" class="form-control" />
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="birthDate" class="col-sm-3 control-label">Select Item Photos</label>
+            <div class="col-sm-9">
+                <input type="file" name="document" class="form-control-file btn btn-default" id="document">
+                <!--multiple-->
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="col-sm-9 col-sm-offset-3">
+                <button type="submit" name="newitem" id="newitem" class="btn btn-primary btn-block">Post Item</button>
+            </div>
+        </div>
+    </form>
+</div>
+<script type="text/javascript">
+    function postItem() {
+        var itemtitle = document.getElementById("title").value;
+        var itemdescription = document.getElementById("description").value;
+        var enddate = document.getElementById("expiredate").value;
+        var price = document.getElementById("expiredate").price;
+
+        $.ajax({
+            type: "POST",
+            data: {
+                itemtitle: itemtitle,
+                itemdescription: itemdescription,
+                enddate: enddate,
+                price: price,
+                csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+            },
+            success: function() {
+                console.log("DPNE OT");
+            }
+        })
+    }
+
+    window.onload = function() {
+        /* Code to prevent users from choosing to and/or past date*/
+        var currentDate = new Date(new Date().getTime() + 24 * 60 * 60 * 1000);
+        var day = currentDate.getDate()
+        var month = currentDate.getMonth() + 1
+        var year = currentDate.getFullYear()
+
+        if(month.toString().length==1) {
+            month = "0"+month;
+        }
+        if(day.toString().length==1) {
+            day = "0"+day;
+        }
+
+        var currentdate = new Date();
+        if (currentdate.getHours().toString().length==1) {
+            var currentHour = "0"+currentdate.getHours();
+        } else {
+            var currentHour = currentdate.getHours();
+        }
+        if (currentdate.getMinutes().toString().length==1) {
+            var currentMinute = "0"+currentdate.getMinutes();
+        } else {
+            var currentMinute = currentdate.getMinutes();
+        }
+        if (currentdate.getSeconds().toString().length==1) {
+            var currentSecond = "0"+currentdate.getSeconds();
+        } else {
+            var currentSecond = currentdate.getSeconds();
+        }
+
+        var tomorrow = currentDate.getFullYear() + "-" + month + "-" + day + "T" + currentHour + ":" + currentMinute + ":" + currentSecond;
+        document.getElementById("expiredate").min = tomorrow;
+    }
+</script>
+{% endblock %}

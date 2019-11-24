@@ -1,0 +1,84 @@
+{% extends "mainapp/base.html" %}
+{% load static %}
+{% block content %}
+<style type="text/css">
+    a {
+        cursor: pointer;
+    }
+</style>
+<div class="container">
+    <form class="col-xl-12" id="searchForm" method="post">{% csrf_token %}
+        <div class="input-group col-md-12">
+            <input style="  font-size: 15px !important;" type="text" id="booksearch" name="booksearch" class="form-control input-lg" placeholder="Search for book" />
+            <span class="input-group-btn">
+				<button style="background-color: white; border-style:none; border-left: solid 1px #ccc;" class="btn btn-info btn-lg" type="submit" name="submit" id="submit">
+					<i style="color:black;" class="glyphicon glyphicon-search"></i>
+				</button>
+			</span>
+        </div>
+    </form>
+</div>
+<div class="container" id="searchresult">
+    <div>
+        <ul class="list-group list-group-flush" id="resultlist"></ul>
+    </div>
+</div>
+<script type="text/javascript">
+    window.onload = function() {
+        "{% for items in items %}"
+        var checkElement = document.getElementById("{{items.pk}}");
+        var description = "{{items.description}}".split(".")[0]+".";
+        if (!checkElement) {
+            $("#resultlist").append("<div class='row' id= {{items.id}}><br><div class='col-sm-2'><img alt='' src={{items.imageurl}} style='height: 150px; width: 150px' /></div><div class='col-sm-8'><h4><a onclick='itemPage(this)' >{{items.title}}</a></h4><p>" + description + "</p><h4>Current Price: £ {{items.price}}</h4><h5>Ends at: {{items.expiredate}}</h5></div></div>");
+        }
+        "{% endfor %}"
+    }
+
+    $('#searchForm').submit(function(ev) {
+        ev.preventDefault();
+        if (window.performance) {
+            console.info("window.performance works fine on this browser");
+        }
+        if (performance.navigation.type == 1) {
+            console.info("This page is reloaded");
+        } else {
+            console.info("This page is not reloaded");
+        }
+
+        var searchvalue = document.getElementById("booksearch").value;
+        var list = document.getElementById("resultlist");
+        while (list.hasChildNodes()) {
+            list.removeChild(list.firstChild);
+        }
+
+        $.ajax({
+            type: "GET",
+            data: {
+                searchvalue: searchvalue,
+                csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+            },
+            success: function(data) {
+                if (data == "No results found, search for something more specific.") {
+                    alert(data);
+                } else {
+                    for (var j = 0; j < data.items.length; j++) {
+
+                        var checkElement = document.getElementById(data.items[j].id);
+
+                        if (!checkElement) {
+                            $("#resultlist").append('<div class="row" id=' + data.items[j].id + '><br><div class="col-sm-2"><img alt="" src=' + data.items[j].imageurl + ' style="height: 150px; width: 150px" /></div><div class="col-sm-8"><h4><a onclick="itemPage(this)">' + data.items[j].title + '</a></h4><p>' + data.items[j].description.split(".")[0] + '</p><h4>Current Price: £' + data.items[j].price + '</h4><h5>Ends at: ' + data.items[j].expiredate + '</h5></div></div>');
+                        }
+                    }
+                }
+            }
+        })
+
+    });
+
+    var itemPage = function(buttonElement) {
+        var fkvalue = buttonElement.parentElement.parentElement.parentElement.id;
+        sessionStorage.setItem("itemid", fkvalue);
+        window.location.href = "itempage.html";
+    }
+</script>
+{% endblock %}

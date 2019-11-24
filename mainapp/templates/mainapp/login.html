@@ -1,0 +1,58 @@
+{% extends "mainapp/base.html" %}
+{% load static %}
+{% block content %}
+<style type="text/css">
+    .center_div {
+        margin: 0 auto;
+        width: 80%/* value of your choice which suits your alignment */
+    }
+</style>
+<div class="container">
+    <form class="form-horizontal" role="form" method="post">
+        <!--action="{% url 'mainapp:signup' %}"-->
+        {% csrf_token %}
+        <h2>Login</h2>
+        <div class="form-group">
+            <label for="email_address" class="col-sm-3 control-label">E-Mail Address</label>
+            <div class="col-sm-9">
+                <input type="text" id="email" class="form-control" placeholder="E-Mail" required autofocus>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="password" class="col-sm-3 control-label">Password</label>
+            <div class="col-sm-9">
+                <input type="password" id="password" placeholder="Password" minlength="8" class="form-control" required>
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="col-sm-9">
+                <button type="submit" class="btn btn-primary" onclick="postTologin();return false;">Login</button>
+                <a href="#" class="btn btn-link">Forgot Your Password?</a>
+            </div>
+        </div>
+    </form>
+</div>
+<script type="text/javascript">
+    function postTologin() {
+        var username = document.getElementById("email").value;
+        var password = document.getElementById("password").value;
+
+        $.ajax({
+            type: "POST",
+            data: {
+                username: username,
+                password: password,
+                csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+            },
+            success: function(info) {
+                if (info == "Username and Password didn't match!") {
+                    alert("Username and Password didn't match!")
+                } else {
+                    var url = "{% url 'mainapp:index' %}"
+                    document.location.href = url;
+                }
+            }
+        })
+    }
+</script>
+{% endblock %}
