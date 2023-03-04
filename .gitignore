@@ -1,0 +1,9 @@
+.scannerwork
+*.log
+*.pyc
+*.coverage
+*.sqlite3
+media/
+htmlcov/
+.idea/
+**/migrations/

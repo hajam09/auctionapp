@@ -1,0 +1,66 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block content %}
+    <style>
+        body {
+            min-height: 100vh
+        }
+
+        .text-gray {
+            color: #aaa
+        }
+
+        img {
+            height: 170px;
+            width: 140px
+        }
+    </style>
+    <br>
+    <div class="container">
+        <form method="GET" action="{{ request.path }}">
+            <div class="row">
+                <div class="col">
+                    <input type="text" id="query" name="query" class="form-control col"
+                           placeholder="Search for anything..." required/>
+                </div>
+                <div class="col-auto">
+                    <input type="submit" class="btn btn-outline-primary" value="Search"/>
+                </div>
+            </div>
+        </form>
+        <br><br>
+        <div class="row">
+            <div class="col-lg-8 mx-auto">
+                <ul class="list-group shadow">
+                    {% for item in itemList %}
+                        <li class="list-group-item">
+                            <div class="media align-items-lg-center flex-column flex-lg-row p-3">
+                                <div class="media-body order-2 order-lg-1">
+                                    <a class="mt-0 font-weight-bold mb-2" style="font-size: 15px;"
+                                       href={% url 'core:item-view' pk=item.id %}>{{ item.title }}</a>
+                                    <p class="font-italic text-muted mb-0 small">{{ item.description|truncatechars:100 }}</p>
+                                    <div class="d-flex align-items-center justify-content-between mt-1">
+                                        <h6 class="font-weight-bold my-2">£{{ item.price }}</h6>
+                                        <ul class="list-inline small">
+                                            <li class="list-inline-item m-0"><i class="fa fa-star text-success"></i>
+                                            </li>
+                                            <li class="list-inline-item m-0"><i class="fa fa-star text-success"></i>
+                                            </li>
+                                            <li class="list-inline-item m-0"><i class="fa fa-star text-success"></i>
+                                            </li>
+                                            <li class="list-inline-item m-0"><i class="fa fa-star text-success"></i>
+                                            </li>
+                                            <li class="list-inline-item m-0"><i class="fa fa-star-o text-gray"></i></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <img class="ml-lg-5 order-1 order-lg-2" src="{{ item.images.all.first.image.url }}" alt="" width="200">
+                            </div>
+                        </li>
+                        <br>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+{% endblock %}

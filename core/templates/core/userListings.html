@@ -1,0 +1,56 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block content %}
+    <br>
+    <div class="container">
+        <form method="GET" action="{{ request.path }}">
+            <div class="row">
+                <div class="col">
+                    <input type="text" id="query" name="query" class="form-control col"
+                           placeholder="Search your listings" required/>
+                </div>
+                <div class="col-auto">
+                    <input type="submit" class="btn btn-outline-primary" value="Search"/>
+                </div>
+            </div>
+        </form>
+        <br><br>
+        <div class="row">
+            <table class="table">
+                <thead class="thead-dark">
+                <tr>
+                    <th scope="col">Item No.</th>
+                    <th scope="col">Name</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">Price</th>
+                    <th scope="col">Action</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for item in itemList %}
+                    <tr>
+                        <th scope="row">{{ item.id }}</th>
+                        <td>{{ item.title }}</td>
+                        <td>
+                            {% if item.type == 'BUY_IT_NOW' %}
+                                <span class="badge badge-primary">{{ item.get_type_display }}</span>
+                            {% else %}
+                                <span class="badge badge-secondary">{{ item.get_type_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td>£{{ item.price }}</td>
+                        <td>
+                            <a class="btn btn-outline-primary btn-sm" href="{% url 'core:item-view' pk=item.id %}"
+                               role="button">View</a>
+                            {% if item.type == 'AUCTION' %}
+                                <a class="btn btn-outline-secondary btn-sm" href="{% url 'core:item-bids' pk=item.id %}"
+                               role="button">View Biddings</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

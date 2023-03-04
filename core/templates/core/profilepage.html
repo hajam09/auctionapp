@@ -1,0 +1,76 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block content %}
+<div class="container">
+    <form class="form-horizontal" role="form" method="post">
+        <!--action="{% url 'core:signup' %}"-->
+        {% csrf_token %}
+        <h2>Update Profile</h2>
+        <div class="form-group">
+            <label for="fullname" class="col-sm-3 control-label">Full Name</label>
+            <div class="col-sm-9">
+                <input type="text" id="fullname" name="fullname" placeholder="Full Name" class="form-control" maxlength="30" required/>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="email" class="col-sm-3 control-label">Email</label>
+            <div class="col-sm-9">
+                <input type="email" id="email" name="email" placeholder="Email" class="form-control" required/>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="password" class="col-sm-3 control-label">Password</label>
+            <div class="col-sm-9">
+                <input type="password" id="password" name="password" placeholder="Leave blank if you don't want to change the password!" minlength="8" class="form-control" required/>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="password" class="col-sm-3 control-label">Repeat Password</label>
+            <div class="col-sm-9">
+                <input type="password" id="password2" name="password2" placeholder="Password" minlength="8" class="form-control" required/>
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="col-sm-9 col-sm-offset-3">
+                <button type="submit" class="btn btn-primary btn-block" onclick="postToUpdate();return false;">Update My Profile</button>
+            </div>
+        </div>
+    </form>
+</div>
+<script type="text/javascript">
+    window.onload = getprofileitems;
+
+    function getprofileitems() {
+        document.getElementById('fullname').value = "{{fullname}}";
+        document.getElementById('email').value = "{{email}}";
+    }
+
+    function postToUpdate() {
+        var fullname = document.getElementById("fullname").value;
+        var email = document.getElementById("email").value;
+        var password = document.getElementById("password").value;
+        var password2 = document.getElementById("password2").value;
+
+        if (fullname != null && fullname != "", email != null && email != "", password == password2) {
+            //new password legnth not validated so user can entery less than 8 characters.
+            $.ajax({
+                type: "PUT",
+                data: {
+                    fullname: fullname,
+                    email: email,
+                    csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+                },
+                success: function() {
+                    if (info == "Your details are updated!") {
+                        alert(info);
+                        var url = "{% url 'core:index-view' %}";
+                    }
+                }
+            })
+        } else {
+            alert("Please Fill All Required Field");
+            return false;
+        }
+    }
+</script>
+{% endblock %}
