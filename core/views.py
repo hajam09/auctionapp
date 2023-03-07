@@ -17,7 +17,7 @@ from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 
 from core.forms import LoginForm, RegistrationForm
-from core.models import Item, Image
+from core.models import Item, Image, Bid
 from core.utils import emailOperations, generalOperations
 
 
@@ -123,19 +123,21 @@ def logout(request):
 @login_required
 def newListing(request):
     if request.method == 'POST':
-        itemName = request.POST.get('item-name')
+        name = request.POST.get('name')
         description = request.POST.get('description')
         price = request.POST.get('price')
         expireDate = request.POST.get('expire-date') or None
         sellType = Item.Type.AUCTION if expireDate else Item.Type.BUY_IT_NOW
+        condition = Item.Condition[request.POST.get('condition')]
 
         item = Item(
             seller=request.user,
-            title=itemName,
+            title=name,
             description=description,
             expireDate=expireDate,
             price=price,
             type=sellType,
+            condition=condition,
         )
 
         item.save()
@@ -158,15 +160,19 @@ def userListings(request):
         )
     ]
 
+    itemList = generalOperations.performComplexItemSearch(request.GET.get('query'), filterList).select_related('buyer')
     context = {
-        'itemList': generalOperations.performComplexItemSearch(request.GET.get('query'), filterList)
+        'itemList': itemList
     }
     return render(request, 'core/userListings.html', context)
 
 
 @login_required
 def itemBids(request, pk):
-    return render(request, 'core/itemBids.html')
+    context = {
+        'bids': Bid.objects.filter(item_id=pk).select_related('bidder')
+    }
+    return render(request, 'core/itemBids.html', context)
 
 
 def itemView(request, pk):
@@ -181,50 +187,6 @@ def itemView(request, pk):
     return render(request, 'core/itemView.html', context)
 
 
-def closedauction(request):
-    # checkExpire()
-    # allitems = Item.objects.all()
-    # Contains item objects which are expired and bought by someone else.
-    # # closedItem = [item for item in allitems if timezone.now() > item.expiredate]
-    # try:
-    #     return render(request, 'core/closedAuctions.html', {"items": closedItem})
-    # except:
-    #     return render(request, 'core/closedAuctions.html')
-    return render(request, 'core/closedAuctions.html')
-
-
-# @csrf_exempt
-def itempage(request):
-    #     if request.method == "PUT":
-    #         put = QueryDict(request.body)
-    #         userbidvalue = round(float(put.get('userbidvalue')), 2)
-    #         itempkvalue = put.get('pkvalue')
-    #         itemobject = Item.objects.get(pk=int(itempkvalue))
-    #
-    #         if (userbidvalue > itemobject.price):
-    #             user_pk = request.user
-    #             # New bidder
-    #             newbidlist = itemobject.bidders + user_pk.username + " " + str(userbidvalue) + ","
-    #             newbidlist = newbidlist.replace('"', '').replace("'", "")
-    #             # Update buyer
-    #             buyer = User.objects.get(pk=user_pk.pk)
-    #             Item.objects.filter(pk=int(itempkvalue)).update(bidders=newbidlist, price=userbidvalue, buyer=buyer)
-    #             return JsonResponse({"items": {"newprice": userbidvalue, "bidderid": user_pk.username}})
-    #         else:
-    #             return HttpResponse("Your bidding value is too small!")
-    #
-    #     if request.method == "GET":
-    #         try:
-    #             itemid = request.GET["itemid"]
-    #             outputData = Item.objects.filter(pk=int(itemid))
-    #             return JsonResponse({"items": list(outputData.values())})
-    #         except:
-    #             pass
-    return render(request, 'core/itempage.html', {})
-
-
-#
-#
 def user_biddings(request):
     #     user_pk = request.user.username
     #     return render(request, 'core/userbiddings.html',

@@ -10,11 +10,19 @@
             {% csrf_token %}
             <div class="form-group">
                 <label for="itme-name">Item Name</label>
-                <input type="text" class="form-control" id="item-name" name="item-name" required>
+                <input type="text" class="form-control" id="name" name="name" required>
             </div>
             <div class="form-group">
                 <label for="description">Item Description</label>
                 <textarea class="form-control" id="description" name="description" rows="5" required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="condition">Item Condition</label>
+                <select class="form-control" id="condition" name="condition">
+                    {% for condition in itemConditionList %}
+                        <option value="{{ condition.0 }}">{{ condition.1 }}</option>
+                    {% endfor %}
+                </select>
             </div>
             <div class="form-group">
                 <label for="itme-name">Item End Date/Time (Select if you want to auction this listing)</label>

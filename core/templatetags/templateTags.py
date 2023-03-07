@@ -1,6 +1,7 @@
 from django import template
 from django.urls import reverse
 
+from core.models import Item
 from core.utils.navigationBar import Icon, linkItem
 
 register = template.Library()
@@ -10,15 +11,15 @@ register = template.Library()
 def navigationPanel(request):
     links = [
         linkItem('Home', reverse('core:index-view'), None),
-        linkItem('My listings', reverse('core:user-listings'), None),
+        linkItem('New listing', reverse('core:new-listing'), None),
     ]
 
     if request.user.is_authenticated:
         links.extend(
             [
                 linkItem('Account', '', None, [
-                    # linkItem('Profile', reverse('core:profile-view'), Icon('', 'fas fa-book-open', '15')),
-                    # None,
+                    linkItem('My listings', reverse('core:user-listings'), Icon('', 'fas fa-sign-out-alt', '15')),
+                    None,
                     linkItem('Logout', reverse('core:logout'), Icon('', 'fas fa-sign-out-alt', '15')),
                 ]),
             ]
@@ -32,3 +33,19 @@ def navigationPanel(request):
             ]),
         )
     return links
+
+
+@register.filter
+def itemStatus(item):
+    if item.buyer is not None:
+        return "SOLD"
+    elif item.type == Item.Type.AUCTION and item.buyer is not None and item.isExpired():
+        return "SOLD"
+    elif item.type == Item.Type.AUCTION and item.buyer is None and item.isExpired():
+        "NOT SOLD"
+    return "LISTED"
+
+
+@register.simple_tag
+def itemConditionList():
+    return Item._meta.get_field('condition').choices

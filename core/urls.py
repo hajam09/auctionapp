@@ -14,8 +14,5 @@ urlpatterns = [
     path('user-listings/', views.userListings, name='user-listings'),
     path('item-bids/<int:pk>/', views.itemBids, name='item-bids'),
     path('item-view/<int:pk>/', views.itemView, name='item-view'),
-    path('closedauction/', views.closedauction, name='closedauction'),
-    # path('profile-view/', views.update_profile, name='profile-view'),
-    path('itempage.html/', views.itempage, name='itempage'),
     path('user_biddings/', views.user_biddings, name='user_biddings'),
 ]

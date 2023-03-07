@@ -1,4 +1,5 @@
 {% extends "core/base.html" %}
+{% load templateTags %}
 {% load static %}
 {% block content %}
     <br>
@@ -23,6 +24,7 @@
                     <th scope="col">Name</th>
                     <th scope="col">Type</th>
                     <th scope="col">Price</th>
+                    <th scope="col">Status</th>
                     <th scope="col">Action</th>
                 </tr>
                 </thead>
@@ -39,12 +41,13 @@
                             {% endif %}
                         </td>
                         <td>£{{ item.price }}</td>
+                        <td>{{ item|itemStatus }}</td>
                         <td>
                             <a class="btn btn-outline-primary btn-sm" href="{% url 'core:item-view' pk=item.id %}"
                                role="button">View</a>
                             {% if item.type == 'AUCTION' %}
                                 <a class="btn btn-outline-secondary btn-sm" href="{% url 'core:item-bids' pk=item.id %}"
-                               role="button">View Biddings</a>
+                                   role="button">View Bidding's</a>
                             {% endif %}
                         </td>
                     </tr>
