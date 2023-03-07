@@ -12,7 +12,8 @@ urlpatterns = [
     path('logout/', views.logout, name='logout'),
     path('new-listing/', views.newListing, name='new-listing'),
     path('user-listings/', views.userListings, name='user-listings'),
+    path('user-purchases/', views.userPurchases, name='user-purchases'),
+    path('user-bids/', views.userBids, name='user-bids'),
     path('item-bids/<int:pk>/', views.itemBids, name='item-bids'),
     path('item-view/<int:pk>/', views.itemView, name='item-view'),
-    path('user_biddings/', views.user_biddings, name='user_biddings'),
 ]

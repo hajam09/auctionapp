@@ -8,7 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.cache import cache
-from django.db.models import Q
+from django.db.models import Q, Max
 from django.http import Http404
 from django.shortcuts import redirect
 from django.shortcuts import render
@@ -84,7 +84,7 @@ def register(request):
     context = {
         "form": form
     }
-    return render(request, 'core/signup.html', context)
+    return render(request, 'core/register.html', context)
 
 
 def activateAccount(request, encodedId, token):
@@ -168,6 +168,33 @@ def userListings(request):
 
 
 @login_required
+def userPurchases(request):
+    filterList = [
+        reduce(
+            operator.and_, [Q(**{'buyer_id': request.user.id})]
+        )
+    ]
+
+    itemList = generalOperations.performComplexItemSearch(request.GET.get('query'), filterList)
+    context = {
+        'itemList': itemList
+    }
+    return render(request, 'core/userPurchases.html', context)
+
+
+@login_required
+def userBids(request):
+    bids = Bid.objects.filter(bidder=request.user).values_list('item_id', 'item__price', 'item__type').annotate(
+        Max('price')
+    )
+
+    context = {
+        'bids': bids
+    }
+    return render(request, 'core/userBids.html', context)
+
+
+@login_required
 def itemBids(request, pk):
     context = {
         'bids': Bid.objects.filter(item_id=pk).select_related('bidder')
@@ -185,10 +212,3 @@ def itemView(request, pk):
         'item': item
     }
     return render(request, 'core/itemView.html', context)
-
-
-def user_biddings(request):
-    #     user_pk = request.user.username
-    #     return render(request, 'core/userbiddings.html',
-    #                   {"items": Item.objects.filter(bidders__icontains=user_pk), "username": user_pk})
-    return render(request, 'core/itempage.html', {})

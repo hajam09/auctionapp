@@ -42,6 +42,9 @@ class Item(BaseModel):
     condition = models.CharField(max_length=32, choices=Condition.choices, default=Condition.NEW)
     images = models.ManyToManyField(Image, blank=True, related_name='itemImages')
 
+    def __str__(self):
+        return self.title
+
     def isExpired(self):
         return self.expireDate > timezone.now()
 

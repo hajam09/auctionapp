@@ -19,6 +19,8 @@ def navigationPanel(request):
             [
                 linkItem('Account', '', None, [
                     linkItem('My listings', reverse('core:user-listings'), Icon('', 'fas fa-sign-out-alt', '15')),
+                    linkItem('My purchases', reverse('core:user-purchases'), Icon('', 'fas fa-sign-out-alt', '15')),
+                    linkItem('My Bidding\'s', reverse('core:user-bids'), Icon('', 'fas fa-sign-out-alt', '15')),
                     None,
                     linkItem('Logout', reverse('core:logout'), Icon('', 'fas fa-sign-out-alt', '15')),
                 ]),
@@ -44,6 +46,13 @@ def itemStatus(item):
     elif item.type == Item.Type.AUCTION and item.buyer is None and item.isExpired():
         "NOT SOLD"
     return "LISTED"
+
+
+@register.filter
+def userBidStatus(bid):
+    if bid[1] > bid[3]:
+        return "You've been outbid!"
+    return "You are the highest bidder!"
 
 
 @register.simple_tag
