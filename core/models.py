@@ -53,3 +53,30 @@ class Bid(BaseModel):
     item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='itemBid')
     bidder = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bidder')
     price = models.DecimalField(max_digits=9, decimal_places=2)
+
+
+class Order(BaseModel):
+    total = models.DecimalField(max_digits=9, decimal_places=2)
+    number = models.CharField(max_length=16)
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='itemOrder')
+    quantity = models.PositiveSmallIntegerField()
+    tracking = models.CharField(max_length=64)
+
+
+class OrderStatus(BaseModel):
+    class Status(models.TextChoices):
+        ORDERED = 'ORDERED', _('Ordered')
+        PROCESSING = 'PROCESSING', _('Processing')
+        CANCELLED = 'CANCELLED', _('Cancelled')
+        DISPATCHED = 'DISPATCHED', _('Dispatched')
+        DELIVERED = 'DELIVERED', _('Delivered')
+        DISPUTED = 'DISPUTED', _('Disputed')
+        RETURN_STARTED = 'RETURN_STARTED', _('Return Started')
+        RETURN_ACCEPTED = 'RETURN_ACCEPTED', _('Return Accepted')
+        RETURN_REJECTED = 'RETURN_REJECTED', _('Return Rejected')
+        RETURNED = 'RETURNED', _('Returned')
+        REFUNDED = 'REFUNDED', _('Refunded')
+
+    status = models.CharField(max_length=32, choices=Status.choices, default=Status.DISPATCHED)
+    description = models.TextField(blank=True, null=True)
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='orderStatus')

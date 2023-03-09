@@ -2,18 +2,15 @@ import operator
 from functools import reduce
 from http import HTTPStatus
 
-from django.contrib import auth
-from django.contrib import messages
+from django.contrib import auth, messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.cache import cache
 from django.db.models import Q, Max
 from django.http import Http404
-from django.shortcuts import redirect
-from django.shortcuts import render
-from django.utils.encoding import DjangoUnicodeDecodeError
-from django.utils.encoding import force_str
+from django.shortcuts import redirect, render
+from django.utils.encoding import DjangoUnicodeDecodeError, force_str
 from django.utils.http import urlsafe_base64_decode
 
 from core.forms import LoginForm, RegistrationForm

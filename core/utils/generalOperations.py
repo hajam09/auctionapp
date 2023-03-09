@@ -25,9 +25,18 @@ def isPasswordStrong(password):
 def performComplexItemSearch(query, filterList=None):
     filterList = filterList or []
     filterList.append(reduce(operator.or_, [Q(**{'deleteFl': False})]))
-    attributesToSearch = ['title', 'description']
+    attributesToSearch = ['title', 'description', 'condition']
 
     if query and query.strip():
-        filterList.append(reduce(operator.or_, [Q(**{f'{v}__icontains': query}) for v in attributesToSearch]))
+        additionalQueryFilter = [
+            reduce(
+                operator.or_, [
+                    Q(**{f'{ats}__icontains': q}) for ats in attributesToSearch
+                ]
+            )
+            for q in query.split()
+        ]
+
+        filterList = filterList + additionalQueryFilter
 
     return Item.objects.filter(reduce(operator.and_, filterList)).distinct()
