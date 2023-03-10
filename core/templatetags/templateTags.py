@@ -15,6 +15,12 @@ def navigationPanel(request):
     ]
 
     if request.user.is_authenticated:
+        cart = request.session.get('cart')
+        if cart is not None and len(cart) > 0:
+            links.append(
+                linkItem(f'Cart ({len(cart)})', reverse('core:cart-view'), None)
+            )
+
         links.extend(
             [
                 linkItem('Account', '', None, [

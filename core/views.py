@@ -21,7 +21,7 @@ from core.utils import emailOperations, generalOperations
 def index(request):
     # expiredItems = Item.objects.filter(Q(expireDate__isnull=False), Q(expireDate__gte=timezone.now()))
     context = {
-        'itemList': generalOperations.performComplexItemSearch(request.GET.get('query'))
+        'itemList': generalOperations.performComplexItemSearch(request.GET.get('query')).prefetch_related('itemReview')
     }
     return render(request, 'core/index.html', context)
 
@@ -209,3 +209,23 @@ def itemView(request, pk):
         'item': item
     }
     return render(request, 'core/itemView.html', context)
+
+
+def cartView(request):
+    userCart = request.session.get('cart')
+    itemId = request.GET.get('id')
+    if userCart is None:
+        request.session['cart'] = []
+        userCart = []
+
+    if request.GET.get('function') == 'add' and itemId not in userCart:
+        userCart.append(itemId)
+    elif request.GET.get('function') == 'remove' and itemId in userCart:
+        userCart.remove(itemId)
+
+    request.session['cart'] = userCart
+
+    previousUrl = request.META.get('HTTP_REFERER')
+    if previousUrl:
+        return redirect(previousUrl)
+    return render(request, 'core/cartView.html')

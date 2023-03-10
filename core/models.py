@@ -48,6 +48,9 @@ class Item(BaseModel):
     def isExpired(self):
         return self.expireDate > timezone.now()
 
+    def getMainImage(self):
+        return self.images.first().image
+
 
 class Bid(BaseModel):
     item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='itemBid')
@@ -80,3 +83,10 @@ class OrderStatus(BaseModel):
     status = models.CharField(max_length=32, choices=Status.choices, default=Status.DISPATCHED)
     description = models.TextField(blank=True, null=True)
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='orderStatus')
+
+
+class Review(BaseModel):
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='itemReview')
+    summary = models.CharField(max_length=1024)
+    description = models.TextField(blank=True, null=True)
+    rating = models.PositiveSmallIntegerField()

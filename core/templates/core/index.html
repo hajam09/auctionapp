@@ -22,7 +22,7 @@
                         <div class="card card-body mt-3">
                             <div class="media align-items-center align-items-lg-start text-center text-lg-left flex-column flex-lg-row">
                                 <div class="mr-2 mb-3 mb-lg-0">
-                                    <img src="https://i.imgur.com/Aj0L4Wa.jpg" width="150" height="150" alt="">
+                                    <img src="{{ item.getMainImage.url }}" width="150" height="150" alt="">
                                 </div>
                                 <div class="media-body">
                                     <h6 class="media-title font-weight-semibold">
@@ -64,10 +64,11 @@
                                         <i class="fa fa-star"></i>
                                         <i class="fa fa-star"></i>
                                     </div>
-                                    <div class="text-muted">2349 reviews</div>
-                                    <button type="button" class="btn btn-warning mt-4 text-white">
-                                        <i class="icon-cart-add mr-2"></i> Add to cart
-                                    </button>
+                                    <div class="text-muted">{{ item.itemReview.count }} reviews</div>
+                                    {% if user.is_authenticated and item.type != 'AUCTION' %}
+                                        <a class="btn btn-warning mt-4 text-white" href="{% url 'core:cart-view' %}?function=add&id={{ item.id }}" role="button"><i
+                                                class="icon-cart-add mr-2"></i> Add to cart</a>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>
