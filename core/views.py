@@ -226,11 +226,20 @@ def itemsFromUser(request, pk):
     return render(request, 'core/itemsFromUser.html', context)
 
 
+@login_required
 def cartView(request):
     userCart = request.session.get('cart')
     itemId = int(request.GET.get('id')) if request.GET.get('id') is not None else None
     if userCart is None or userCart == [] and not request.GET.get('function'):
         request.session['cart'] = []
+        return redirect('core:index-view')
+
+    if request.method == 'POST':
+        Item.objects.filter(id__in=userCart).update(buyer_id=request.user.id)
+        request.session['cart'] = []
+        messages.success(
+            request, 'Order is complete!'
+        )
         return redirect('core:index-view')
 
     if request.GET.get('function') == 'add' and itemId not in userCart:

@@ -261,7 +261,7 @@ def renderCardDetailsInputComponent(itemList):
                 <p class="mb-2">Total(Incl. taxes)</p>
                 <p class="mb-2">£{totalPrice}</p>
             </div>
-            <button type="button" class="btn btn-info btn-block btn-lg">
+            <button type="submit" class="btn btn-info btn-block btn-lg">
                 <div class="d-flex justify-content-between">
                     <span>£{totalPrice}</span>
                     <span>Checkout <i
@@ -291,6 +291,30 @@ def renderUserListingTable(item):
             <td>{itemStatus(item)}</td>
             <td>
                 <a class="btn btn-outline-primary btn-sm" href="{reverse('core:item-view', kwargs={'pk': item.pk})}"
+                   role="button">View</a>
+                   {viewBiddingButton}
+            </td>
+        </tr>
+    '''
+    return mark_safe(itemContent)
+
+
+@register.simple_tag
+def renderUserBidsTable(bid):
+    viewBiddingButton = '<span></span>'
+    if bid[2] == Item.Type.AUCTION:
+        viewBiddingButton = f'''
+        <a class="btn btn-outline-secondary btn-sm" href="{reverse('core:item-bids', kwargs={'pk': bid[0]})}" role="button">View Bidding's</a>
+        '''
+
+    itemContent = f'''
+        <tr>
+            <th scope="row">{bid[0]}</th>
+            <td>£{bid[3]}</td>
+            <td>{bid[1]}</td>
+            <td>{userBidStatus(bid)}</td>
+            <td>
+                <a class="btn btn-outline-primary btn-sm" href="{reverse('core:item-view', kwargs={'pk': bid[0]})}"
                    role="button">View</a>
                    {viewBiddingButton}
             </td>

@@ -17,20 +17,7 @@
                 </thead>
                 <tbody>
                 {% for bid in bids %}
-                    <tr>
-                        <th scope="row">{{ bid.0 }}</th>
-                        <th scope="row">£{{ bid.3 }}</th>
-                        <th scope="row">£{{ bid.1 }}</th>
-                        <th scope="row">{{ bid|userBidStatus }}</th>
-                        <td>
-                            <a class="btn btn-outline-primary btn-sm" href="{% url 'core:item-view' pk=bid.0 %}"
-                               role="button">View</a>
-                            {% if bid.2 == 'AUCTION' %}
-                                <a class="btn btn-outline-secondary btn-sm" href="{% url 'core:item-bids' pk=bid.0 %}"
-                                   role="button">View Bidding's</a>
-                            {% endif %}
-                        </td>
-                    </tr>
+                    {% renderUserBidsTable bid %}
                 {% endfor %}
                 </tbody>
             </table>

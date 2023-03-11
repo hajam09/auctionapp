@@ -25,7 +25,10 @@
                             {% endfor %}
                         </div>
                         <div class="col-lg-5">
+                            <form method="post">
+                                {% csrf_token %}
                             {% renderCardDetailsInputComponent itemList %}
+                            </form>
                         </div>
                     </div>
                 </div>
