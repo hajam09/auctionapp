@@ -35,31 +35,7 @@
     <div class="collapse navbar-collapse" id="navbarNavDropdown">
         <ul class="navbar-nav ml-auto">
             {% for panel in navigationPanel %}
-                {% if not panel.subLinks %}
-                    <li class="nav-item active">
-                        <a class="nav-link" href="{{ panel.url }}" data-toggle="tooltip" data-placement="right"
-                           title="{{ panel.name }}">
-                            {% if panel.icon %}{{ panel.icon|safe }}{% endif %} {{ panel.name }}
-                        </a>
-                    </li>
-                {% else %}
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
-                           data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            {% if panel.icon %}{{ panel.icon|safe }}{% endif %} {{ panel.name }}
-                        </a>
-                        <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
-                            {% for subLink in panel.subLinks %}
-                                {% if subLink %}
-                                    <a class="dropdown-item"
-                                       href="{{ subLink.url }}"> {{ subLink.icon|safe }} {{ subLink.name }}</a>
-                                {% else %}
-                                    <div class="dropdown-divider"></div>
-                                {% endif %}
-                            {% endfor %}
-                        </div>
-                    </li>
-                {% endif %}
+                {% renderNavigationPanelComponent panel %}
             {% endfor %}
         </ul>
     </div>

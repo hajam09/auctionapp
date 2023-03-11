@@ -45,6 +45,43 @@ def navigationPanel(request):
     return links
 
 
+@register.simple_tag
+def renderNavigationPanelComponent(panel):
+    panelIcon = panel.get('icon') if panel.get('icon') else '<span></span>'
+    if panel.get('subLinks') is None:
+        itemContent = f'''
+        <li class="nav-item active">
+            <a class="nav-link" href="{panel.get('url')}" data-toggle="tooltip" data-placement="right"
+               title="{panel.get('name')}">
+                {panelIcon} {panel.get('name')}
+            </a>
+        </li>
+        '''
+    else:
+        content = ''
+        for subLink in panel.get('subLinks'):
+            if subLink:
+                content += f'''
+                    <a class="dropdown-item"href="{subLink.get('url')}"> {subLink.get('icon')} {subLink.get('name')}</a>
+                '''
+            else:
+                content += f'''<div class="dropdown-divider"></div>'''
+
+        itemContent = f'''
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
+               data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                {panelIcon} {panel.get('name')}
+            </a>
+            <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
+                {content}
+            </div>
+        </li>
+        '''
+
+    return mark_safe(itemContent)
+
+
 @register.filter
 def itemStatus(item):
     if item.buyer is not None:
