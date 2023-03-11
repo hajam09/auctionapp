@@ -213,7 +213,7 @@ def itemView(request, pk):
 
 def cartView(request):
     userCart = request.session.get('cart')
-    itemId = request.GET.get('id')
+    itemId = int(request.GET.get('id')) if request.GET.get('id') is not None else None
     if userCart is None:
         request.session['cart'] = []
         userCart = []
@@ -226,6 +226,11 @@ def cartView(request):
     request.session['cart'] = userCart
 
     previousUrl = request.META.get('HTTP_REFERER')
-    if previousUrl:
+    if previousUrl and request.GET.get('function'):
         return redirect(previousUrl)
-    return render(request, 'core/cartView.html')
+
+    items = Item.objects.filter(id__in=userCart)
+    context = {
+        'itemList': items
+    }
+    return render(request, 'core/cartView.html', context)
