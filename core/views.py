@@ -21,7 +21,8 @@ from core.utils import emailOperations, generalOperations
 def index(request):
     # expiredItems = Item.objects.filter(Q(expireDate__isnull=False), Q(expireDate__gte=timezone.now()))
     context = {
-        'itemList': generalOperations.performComplexItemSearch(request.GET.get('query')).prefetch_related('itemReview')
+        'itemList': generalOperations.performComplexItemSearch(request.GET.get('query')).prefetch_related(
+            'itemReview').select_related('seller')
     }
     return render(request, 'core/index.html', context)
 
@@ -211,12 +212,26 @@ def itemView(request, pk):
     return render(request, 'core/itemView.html', context)
 
 
+def itemsFromUser(request, pk):
+    filterList = [
+        reduce(
+            operator.and_, [Q(**{'seller_id': pk})]
+        )
+    ]
+    context = {
+        'itemList': generalOperations.performComplexItemSearch(request.GET.get('query'), filterList).prefetch_related(
+            'itemReview')
+
+    }
+    return render(request, 'core/itemsFromUser.html', context)
+
+
 def cartView(request):
     userCart = request.session.get('cart')
     itemId = int(request.GET.get('id')) if request.GET.get('id') is not None else None
-    if userCart is None:
+    if userCart is None or userCart == [] and not request.GET.get('function'):
         request.session['cart'] = []
-        userCart = []
+        return redirect('core:index-view')
 
     if request.GET.get('function') == 'add' and itemId not in userCart:
         userCart.append(itemId)

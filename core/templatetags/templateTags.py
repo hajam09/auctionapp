@@ -1,5 +1,5 @@
 from django import template
-from django.db.models import Sum
+from django.db.models import Sum, Avg
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 
@@ -98,13 +98,35 @@ def itemCartButton(request, item):
 
 
 @register.simple_tag
-def renderItemCatalogue(request, item):
+def renderItemCatalogue(request, item, showSeller):
+    showSeller = eval(showSeller)
     itemExpireDttm = f'''
     <li class="list-inline-item">
         <span class="text-muted"
               data-abc="true">Expires at {item.expireDate.strftime('%B %d, %Y %H:%M:%S')}</span>
     </li>
     ''' if item.type == Item.Type.AUCTION else '<span></span>'
+
+    sellerLine = '<span></span>'
+    if showSeller:
+        sellerLine = f'''
+        <li class="list-inline-item">
+            All items from
+            <a href="{reverse('core:items-from-user-view', kwargs={'pk': item.seller.pk})}" data-abc="true">{item.seller.get_short_name()}</a>
+        </li>
+        '''
+
+    # should be either .0 or .5
+    if item.itemReview.count() == 0:
+        averageRatingOutOfFive = 0
+    else:
+        averageRatingOutOfFive = round(item.itemReview.aggregate(avg=Avg('rating')).get('avg') * 2) / 2
+
+    stars = ''
+    for i in range(int(averageRatingOutOfFive)):  # rounds it lower
+        stars += '<i class="fa fa-star"></i>'
+    if averageRatingOutOfFive - int(averageRatingOutOfFive) == 0.5:
+        stars += '<i class="fa fa-star-half"></i>'
 
     itemContent = f'''
         <div class="card card-body mt-3">
@@ -129,9 +151,7 @@ def renderItemCatalogue(request, item):
                     </ul>
                     <p class="mb-3">{item.description} </p>
                     <ul class="list-inline list-inline-dotted mb-0">
-                        <li class="list-inline-item">All items from <a href="#" data-abc="true">Mobile
-                            junction</a>
-                        </li>
+                        {sellerLine}
                         <li class="list-inline-item">Add to <a href="#" data-abc="true">wishlist</a>
                         </li>
                     </ul>
@@ -139,11 +159,7 @@ def renderItemCatalogue(request, item):
                 <div class="mt-3 mt-lg-0 ml-lg-3 text-center">
                     <h3 class="mb-0 font-weight-semibold">£{item.price}</h3>
                     <div>
-                        <i class="fa fa-star"></i>
-                        <i class="fa fa-star"></i>
-                        <i class="fa fa-star"></i>
-                        <i class="fa fa-star"></i>
-                        <i class="fa fa-star"></i>
+                        {stars}
                     </div>
                     <div class="text-muted">{item.itemReview.count()} reviews</div>
                     {itemCartButton(request, item)}
@@ -195,14 +211,10 @@ def renderCardDetailsInputComponent(itemList):
                 <h5 class="mb-0">Card details</h5>
             </div>
             <p class="small mb-2">Card type</p>
-            <a href="#" type="submit"><i
-                    class="fab fa-cc-mastercard fa-2x me-2"></i></a>
-            <a href="#" type="submit"><i
-                    class="fab fa-cc-visa fa-2x me-2"></i></a>
-            <a href="#" type="submit"><i
-                    class="fab fa-cc-amex fa-2x me-2"></i></a>
-            <a href="#" type="submit"><i
-                    class="fab fa-cc-paypal fa-2x"></i></a>
+            <a href="#" type="submit"><i class="fab fa-cc-mastercard fa-2x me-2"></i></a>
+            <a href="#" type="submit"><i class="fab fa-cc-visa fa-2x me-2"></i></a>
+            <a href="#" type="submit"><i class="fab fa-cc-amex fa-2x me-2"></i></a>
+            <a href="#" type="submit"><i class="fab fa-cc-paypal fa-2x"></i></a>
             <form class="mt-4">
                 <div class="form-outline form-white mb-4">
                     <input type="text" id="typeName"
