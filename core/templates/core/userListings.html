@@ -30,27 +30,7 @@
                 </thead>
                 <tbody>
                 {% for item in itemList %}
-                    <tr>
-                        <th scope="row">{{ item.id }}</th>
-                        <td>{{ item.title }}</td>
-                        <td>
-                            {% if item.type == 'BUY_IT_NOW' %}
-                                <span class="badge badge-primary">{{ item.get_type_display }}</span>
-                            {% else %}
-                                <span class="badge badge-secondary">{{ item.get_type_display }}</span>
-                            {% endif %}
-                        </td>
-                        <td>£{{ item.price }}</td>
-                        <td>{{ item|itemStatus }}</td>
-                        <td>
-                            <a class="btn btn-outline-primary btn-sm" href="{% url 'core:item-view' pk=item.id %}"
-                               role="button">View</a>
-                            {% if item.type == 'AUCTION' %}
-                                <a class="btn btn-outline-secondary btn-sm" href="{% url 'core:item-bids' pk=item.id %}"
-                                   role="button">View Bidding's</a>
-                            {% endif %}
-                        </td>
-                    </tr>
+                    {% renderUserListingTable item %}
                 {% endfor %}
                 </tbody>
             </table>

@@ -152,8 +152,6 @@ def renderItemCatalogue(request, item, showSeller):
                     <p class="mb-3">{item.description} </p>
                     <ul class="list-inline list-inline-dotted mb-0">
                         {sellerLine}
-                        <li class="list-inline-item">Add to <a href="#" data-abc="true">wishlist</a>
-                        </li>
                     </ul>
                 </div>
                 <div class="mt-3 mt-lg-0 ml-lg-3 text-center">
@@ -272,6 +270,31 @@ def renderCardDetailsInputComponent(itemList):
             </button>
         </div>
     </div>
+    '''
+    return mark_safe(itemContent)
+
+
+@register.simple_tag
+def renderUserListingTable(item):
+    viewBiddingButton = '<span></span>'
+    if item.type == Item.Type.AUCTION:
+        viewBiddingButton = f'''<a class="btn btn-outline-secondary btn-sm" href="{reverse('core:item-bids', kwargs={'pk': item.pk})}" role="button">View Bidding's</a>'''''
+
+    itemContent = f'''
+        <tr>
+            <th scope="row">{item.id}</th>
+            <td>{item.title}</td>
+            <td>
+            <span class="badge badge-{'primary' if item.type == Item.Type.BUY_IT_NOW else 'secondary'}">{item.get_type_display()}</span>
+            </td>
+            <td>£{item.price}</td>
+            <td>{itemStatus(item)}</td>
+            <td>
+                <a class="btn btn-outline-primary btn-sm" href="{reverse('core:item-view', kwargs={'pk': item.pk})}"
+                   role="button">View</a>
+                   {viewBiddingButton}
+            </td>
+        </tr>
     '''
     return mark_safe(itemContent)
 
