@@ -17,6 +17,8 @@ from core.forms import LoginForm, RegistrationForm
 from core.models import Item, Image, Bid
 from core.utils import emailOperations, generalOperations
 
+# TODO: Item edit page.
+
 
 def index(request):
     # expiredItems = Item.objects.filter(Q(expireDate__isnull=False), Q(expireDate__gte=timezone.now()))
@@ -120,6 +122,7 @@ def logout(request):
 
 @login_required
 def newListing(request):
+    # TODO: convert this into django form.
     if request.method == 'POST':
         name = request.POST.get('name')
         description = request.POST.get('description')
@@ -152,6 +155,7 @@ def newListing(request):
 
 @login_required
 def userListings(request):
+    # TODO: add "Edit" action button to allow the user to amend the item.
     filterList = [
         reduce(
             operator.and_, [Q(**{'seller_id': request.user.id})]
@@ -167,6 +171,7 @@ def userListings(request):
 
 @login_required
 def userPurchases(request):
+    # TODO: re-design the template from the image
     filterList = [
         reduce(
             operator.and_, [Q(**{'buyer_id': request.user.id})]
@@ -201,6 +206,9 @@ def itemBids(request, pk):
 
 
 def itemView(request, pk):
+    # TODO: Move components to template tag
+    # TODO: Allow user to add price for auction
+    # TODO: Show related products
     try:
         item = Item.objects.get(id=pk)
     except Item.DoesNotExist:
@@ -213,6 +221,7 @@ def itemView(request, pk):
 
 
 def itemsFromUser(request, pk):
+    # TODO: If seller is viewing the page then display edit item button rather than add to cart item.
     filterList = [
         reduce(
             operator.and_, [Q(**{'seller_id': pk})]
