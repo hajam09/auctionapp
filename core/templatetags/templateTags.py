@@ -110,7 +110,16 @@ def itemCartButton(request, item):
         request.session['cart'] = []
         userCart = []
 
-    if item.type == Item.Type.BUY_IT_NOW and item.id in userCart:
+    if request.user == item.seller:
+        return mark_safe(
+            f'''
+                <a class="btn btn-outline-dark mt-4" href="#" role="button">
+                    <i class="fas fa-edit"></i>
+                    Edit item
+                </a>
+                '''
+        )
+    elif item.type == Item.Type.BUY_IT_NOW and item.id in userCart:
         return mark_safe(
             f'''
             <a class="btn btn-outline-secondary mt-4"
@@ -329,6 +338,10 @@ def renderUserListingTable(item):
             <td>
                 <a class="btn btn-outline-primary btn-sm" href="{reverse('core:item-view', kwargs={'pk': item.pk})}"
                    role="button">View</a>
+                <a class="btn btn-outline-dark btn-sm" href="#"
+                   role="button">Edit</a>
+                <a class="btn btn-outline-danger btn-sm" href="{reverse('core:user-listings')}?function=delete&item={item.pk}"
+                   role="button">Delete</a>
                    {viewBiddingButton}
             </td>
         </tr>

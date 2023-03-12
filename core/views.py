@@ -17,6 +17,7 @@ from core.forms import LoginForm, RegistrationForm
 from core.models import Item, Image, Bid
 from core.utils import emailOperations, generalOperations
 
+
 # TODO: Item edit page.
 
 
@@ -155,7 +156,10 @@ def newListing(request):
 
 @login_required
 def userListings(request):
-    # TODO: add "Edit" action button to allow the user to amend the item.
+    if request.GET.get('function') == 'delete' and request.GET.get('item'):
+        Item.objects.filter(id=request.GET.get('item'), seller=request.user, deleteFl=False).update(deleteFl=True)
+        return redirect('core:user-listings')
+
     filterList = [
         reduce(
             operator.and_, [Q(**{'seller_id': request.user.id})]
@@ -221,7 +225,6 @@ def itemView(request, pk):
 
 
 def itemsFromUser(request, pk):
-    # TODO: If seller is viewing the page then display edit item button rather than add to cart item.
     filterList = [
         reduce(
             operator.and_, [Q(**{'seller_id': pk})]
