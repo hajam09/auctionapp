@@ -202,10 +202,19 @@ class ItemForm(forms.Form):
         ),
     )
 
-    def __init__(self, request, *args, **kwargs):
+    def __init__(self, request, item=None, *args, **kwargs):
         kwargs.setdefault('label_suffix', '')
         super(ItemForm, self).__init__(*args, **kwargs)
         self.request = request
+        self.item = item
+
+        if item:
+            self.initial['itemName'] = item.title
+            self.initial['description'] = item.description
+            self.initial['condition'] = Item.Condition[item.condition]
+            self.base_fields['expireDate'].initial = item.expireDate.strftime(
+                '%Y-%m-%d %H:%M') if item.expireDate else None
+            self.base_fields['price'].initial = item.price
 
     def save(self):
         item = Item(
@@ -221,3 +230,13 @@ class ItemForm(forms.Form):
         imageList = Image.objects.bulk_create([Image(image=i) for i in self.request.FILES.getlist('images')])
         item.images.add(*imageList)
         return item
+
+    def update(self):
+        self.item.title = self.cleaned_data.get('itemName')
+        self.item.description = self.cleaned_data.get('description')
+        self.item.expireDate = self.cleaned_data.get('expireDate')
+        self.item.price = self.cleaned_data.get('price')
+        self.item.type = Item.Type.AUCTION if self.cleaned_data.get('expireDate') else Item.Type.BUY_IT_NOW,
+        self.item.condition = Item.Condition[self.cleaned_data.get('condition')]
+        self.item.save()
+        return self.item

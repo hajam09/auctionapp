@@ -142,6 +142,32 @@ def newListing(request):
 
 
 @login_required
+def editListing(request, pk):
+    try:
+        item = Item.objects.get(pk=pk)
+    except Item.DoesNotExist:
+        raise Http404
+
+    if request.method == 'POST':
+        form = ItemForm(request, item, request.POST, request.FILES)
+        if form.is_valid():
+            form.update()
+
+        messages.info(
+            request, 'Item updated successfully.'
+        )
+
+        return redirect('core:edit-listing', pk=pk)
+    else:
+        form = ItemForm(request, item)
+
+    context = {
+        'form': form
+    }
+    return render(request, 'core/editListing.html', context)
+
+
+@login_required
 def userListings(request):
     if request.GET.get('function') == 'delete' and request.GET.get('item'):
         Item.objects.filter(id=request.GET.get('item'), seller=request.user, deleteFl=False).update(deleteFl=True)

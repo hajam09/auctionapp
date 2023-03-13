@@ -11,6 +11,7 @@ urlpatterns = [
     path('activate-account/<encodedId>/<token>', views.activateAccount, name='activate-account'),
     path('logout/', views.logout, name='logout'),
     path('new-listing/', views.newListing, name='new-listing'),
+    path('edit-listing/<int:pk>/', views.editListing, name='edit-listing'),
     path('user-listings/', views.userListings, name='user-listings'),
     path('user-purchases/', views.userPurchases, name='user-purchases'),
     path('user-bids/', views.userBids, name='user-bids'),

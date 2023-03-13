@@ -113,7 +113,7 @@ def itemCartButton(request, item):
     if request.user == item.seller:
         return mark_safe(
             f'''
-                <a class="btn btn-outline-dark mt-4" href="#" role="button">
+                <a class="btn btn-outline-dark mt-4" href="{reverse('core:edit-listing', kwargs={'pk': item.pk})}" role="button">
                     <i class="fas fa-edit"></i>
                     Edit item
                 </a>
@@ -338,7 +338,7 @@ def renderUserListingTable(item):
             <td>
                 <a class="btn btn-outline-primary btn-sm" href="{reverse('core:item-view', kwargs={'pk': item.pk})}"
                    role="button">View</a>
-                <a class="btn btn-outline-dark btn-sm" href="#"
+                <a class="btn btn-outline-dark btn-sm" href="{reverse('core:edit-listing', kwargs={'pk': item.pk})}"
                    role="button">Edit</a>
                 <a class="btn btn-outline-danger btn-sm" href="{reverse('core:user-listings')}?function=delete&item={item.pk}"
                    role="button">Delete</a>
