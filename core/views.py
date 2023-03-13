@@ -13,8 +13,8 @@ from django.shortcuts import redirect, render
 from django.utils.encoding import DjangoUnicodeDecodeError, force_str
 from django.utils.http import urlsafe_base64_decode
 
-from core.forms import LoginForm, RegistrationForm
-from core.models import Item, Image, Bid
+from core.forms import LoginForm, RegistrationForm, ItemForm
+from core.models import Item, Bid
 from core.utils import emailOperations, generalOperations
 
 
@@ -123,35 +123,22 @@ def logout(request):
 
 @login_required
 def newListing(request):
-    # TODO: convert this into django form.
     if request.method == 'POST':
-        name = request.POST.get('name')
-        description = request.POST.get('description')
-        price = request.POST.get('price')
-        expireDate = request.POST.get('expire-date') or None
-        sellType = Item.Type.AUCTION if expireDate else Item.Type.BUY_IT_NOW
-        condition = Item.Condition[request.POST.get('condition')]
-
-        item = Item(
-            seller=request.user,
-            title=name,
-            description=description,
-            expireDate=expireDate,
-            price=price,
-            type=sellType,
-            condition=condition,
-        )
-
-        item.save()
-        imageList = Image.objects.bulk_create([Image(image=i) for i in request.FILES.getlist('images')])
-        item.images.add(*imageList)
+        form = ItemForm(request, request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
 
         messages.info(
             request, 'Item added successfully.'
         )
         return redirect('core:new-listing')
+    else:
+        form = ItemForm(request)
 
-    return render(request, 'core/newListing.html')
+    context = {
+        'form': form
+    }
+    return render(request, 'core/newListing.html', context)
 
 
 @login_required

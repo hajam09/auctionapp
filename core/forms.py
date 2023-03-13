@@ -6,6 +6,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 
+from core.models import Item, Image
 from core.utils import generalOperations
 
 
@@ -130,3 +131,93 @@ class LoginForm(forms.ModelForm):
             return self.cleaned_data
 
         raise ValidationError("Username or Password did not match!")
+
+
+class DateTimeInput(forms.DateInput):
+    input_type = 'datetime-local'
+
+
+class ItemForm(forms.Form):
+    itemName = forms.CharField(
+        label='Item Name',
+        required=True,
+        widget=forms.TextInput(
+            attrs={
+                'class': 'form-control col',
+                'style': 'border-radius: 0',
+            }
+        )
+    )
+    description = forms.CharField(
+        label='Item Description',
+        required=True,
+        widget=forms.Textarea(
+            attrs={
+                'class': 'form-control col',
+                'style': 'border-radius: 0',
+                'rows': 5,
+            }
+        )
+    )
+    condition = forms.ChoiceField(
+        label='Item Condition',
+        required=False,
+        widget=forms.Select(
+            attrs={
+                'class': 'form-control',
+                'style': 'width: 100%; border-radius: 0',
+            }
+        ),
+        choices=Item._meta.get_field('condition').choices,
+    )
+    expireDate = forms.DateTimeField(
+        label='Item End Date/Time (Select if you want to auction this listing)',
+        required=False,
+        widget=DateTimeInput(
+            attrs={
+                'class': 'form-control',
+                'style': 'width: 100%; border-radius: 0',
+            }
+        )
+    )
+    price = forms.DecimalField(
+        label='Price (£)',
+        widget=forms.NumberInput(
+            attrs={
+                'class': 'form-control',
+                'style': 'width: 100%; border-radius: 0',
+                'min': '0',
+                'step': '.01',
+            }
+        )
+    )
+    images = forms.ImageField(
+        label='Upload Item Images',
+        required=True,
+        widget=forms.ClearableFileInput(
+            attrs={
+                'class': 'form-control',
+                'multiple': 'multiple',
+            }
+        ),
+    )
+
+    def __init__(self, request, *args, **kwargs):
+        kwargs.setdefault('label_suffix', '')
+        super(ItemForm, self).__init__(*args, **kwargs)
+        self.request = request
+
+    def save(self):
+        item = Item(
+            seller=self.request.user,
+            title=self.cleaned_data.get('itemName'),
+            description=self.cleaned_data.get('description'),
+            expireDate=self.cleaned_data.get('expireDate'),
+            price=self.cleaned_data.get('price'),
+            type=Item.Type.AUCTION if self.cleaned_data.get('expireDate') else Item.Type.BUY_IT_NOW,
+            condition=Item.Condition[self.cleaned_data.get('condition')]
+        )
+        item.save()
+        imageList = Image.objects.bulk_create([Image(image=i) for i in self.request.FILES.getlist('images')])
+        item.images.add(*imageList)
+        return item
