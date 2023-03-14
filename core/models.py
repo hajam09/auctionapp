@@ -16,10 +16,6 @@ class BaseModel(models.Model):
         abstract = True
 
 
-class Image(BaseModel):
-    image = models.ImageField(blank=True, null=True, upload_to='uploads/%Y/%m/%d')
-
-
 class Item(BaseModel):
     class Type(models.TextChoices):
         BUY_IT_NOW = 'BUY_IT_NOW', _('Buy It Now')
@@ -38,9 +34,9 @@ class Item(BaseModel):
     description = models.TextField(blank=True, null=True)
     expireDate = models.DateTimeField(blank=True, null=True)
     price = models.DecimalField(max_digits=9, decimal_places=2)
+    deliveryCharge = models.DecimalField(blank=True, null=True, max_digits=9, decimal_places=2)
     type = models.CharField(max_length=16, choices=Type.choices, default=Type.BUY_IT_NOW)
     condition = models.CharField(max_length=32, choices=Condition.choices, default=Condition.NEW)
-    images = models.ManyToManyField(Image, blank=True, related_name='itemImages')
 
     def __str__(self):
         return self.title
@@ -48,8 +44,10 @@ class Item(BaseModel):
     def isExpired(self):
         return self.expireDate > timezone.now()
 
-    def getMainImage(self):
-        return self.images.first().image
+
+class Image(BaseModel):
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='itemImage')
+    image = models.ImageField(blank=True, null=True, upload_to='uploads/%Y/%m/%d')
 
 
 class Bid(BaseModel):

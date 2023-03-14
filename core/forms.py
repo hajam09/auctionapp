@@ -191,6 +191,18 @@ class ItemForm(forms.Form):
             }
         )
     )
+    deliveryCharge = forms.DecimalField(
+        label='Delivery Charge (£) - Leave empty if you offer free delivery',
+        required=False,
+        widget=forms.NumberInput(
+            attrs={
+                'class': 'form-control',
+                'style': 'width: 100%; border-radius: 0',
+                'min': '0',
+                'step': '.01',
+            }
+        )
+    )
     images = forms.ImageField(
         label='Upload Item Images',
         required=True,
@@ -208,13 +220,14 @@ class ItemForm(forms.Form):
         self.request = request
         self.item = item
 
-        if item:
+        if item and isinstance(item, Item):
             self.initial['itemName'] = item.title
             self.initial['description'] = item.description
             self.initial['condition'] = Item.Condition[item.condition]
             self.base_fields['expireDate'].initial = item.expireDate.strftime(
                 '%Y-%m-%d %H:%M') if item.expireDate else None
             self.base_fields['price'].initial = item.price
+            self.base_fields['deliveryCharge'].initial = item.deliveryCharge
 
     def save(self):
         item = Item(
@@ -223,12 +236,12 @@ class ItemForm(forms.Form):
             description=self.cleaned_data.get('description'),
             expireDate=self.cleaned_data.get('expireDate'),
             price=self.cleaned_data.get('price'),
+            deliveryCharge=self.cleaned_data.get('deliveryCharge'),
             type=Item.Type.AUCTION if self.cleaned_data.get('expireDate') else Item.Type.BUY_IT_NOW,
             condition=Item.Condition[self.cleaned_data.get('condition')]
         )
         item.save()
-        imageList = Image.objects.bulk_create([Image(image=i) for i in self.request.FILES.getlist('images')])
-        item.images.add(*imageList)
+        Image.objects.bulk_create([Image(item=item, image=i) for i in self.request.FILES.getlist('images')])
         return item
 
     def update(self):
@@ -236,7 +249,9 @@ class ItemForm(forms.Form):
         self.item.description = self.cleaned_data.get('description')
         self.item.expireDate = self.cleaned_data.get('expireDate')
         self.item.price = self.cleaned_data.get('price')
+        self.item.deliveryCharge = self.cleaned_data.get('deliveryCharge')
         self.item.type = Item.Type.AUCTION if self.cleaned_data.get('expireDate') else Item.Type.BUY_IT_NOW,
         self.item.condition = Item.Condition[self.cleaned_data.get('condition')]
         self.item.save()
+        Image.objects.bulk_create([Image(item=self.item, image=i) for i in self.request.FILES.getlist('images')])
         return self.item

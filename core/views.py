@@ -14,11 +14,8 @@ from django.utils.encoding import DjangoUnicodeDecodeError, force_str
 from django.utils.http import urlsafe_base64_decode
 
 from core.forms import LoginForm, RegistrationForm, ItemForm
-from core.models import Item, Bid
+from core.models import Item, Bid, Image
 from core.utils import emailOperations, generalOperations
-
-
-# TODO: Item edit page.
 
 
 def index(request):
@@ -124,7 +121,7 @@ def logout(request):
 @login_required
 def newListing(request):
     if request.method == 'POST':
-        form = ItemForm(request, request.POST, request.FILES)
+        form = ItemForm(request, None, request.POST, request.FILES)
         if form.is_valid():
             form.save()
 
@@ -133,7 +130,7 @@ def newListing(request):
         )
         return redirect('core:new-listing')
     else:
-        form = ItemForm(request)
+        form = ItemForm(request, None)
 
     context = {
         'form': form
@@ -143,6 +140,10 @@ def newListing(request):
 
 @login_required
 def editListing(request, pk):
+    if request.GET.get('function') == 'deleteImage' and request.GET.get('image'):
+        Image.objects.filter(id=request.GET.get('image'), item_id=pk).delete()
+        return redirect('core:edit-listing', pk=pk)
+
     try:
         item = Item.objects.get(pk=pk)
     except Item.DoesNotExist:
@@ -162,7 +163,8 @@ def editListing(request, pk):
         form = ItemForm(request, item)
 
     context = {
-        'form': form
+        'form': form,
+        'item': item,
     }
     return render(request, 'core/editListing.html', context)
 

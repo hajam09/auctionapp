@@ -60,7 +60,7 @@
                 <div class="row gx-4 gx-lg-5 align-items-center">
                     <div class="col-md-6">
                         <div class="slideshow-container">
-                            {% for i in item.images.all %}
+                            {% for i in item.itemImage.all %}
                                 <div class="mySlides">
                                     <img src="{{ i.image.url }}" style="width:100%;height: 500px">
                                 </div>

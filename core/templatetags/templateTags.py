@@ -113,7 +113,7 @@ def itemCartButton(request, item):
     if request.user == item.seller:
         return mark_safe(
             f'''
-                <a class="btn btn-outline-dark mt-4" href="{reverse('core:edit-listing', kwargs={'pk': item.pk})}" role="button">
+                <a class="btn btn-outline-dark mt-3" href="{reverse('core:edit-listing', kwargs={'pk': item.pk})}" role="button">
                     <i class="fas fa-edit"></i>
                     Edit item
                 </a>
@@ -122,7 +122,7 @@ def itemCartButton(request, item):
     elif item.type == Item.Type.BUY_IT_NOW and item.id in userCart:
         return mark_safe(
             f'''
-            <a class="btn btn-outline-secondary mt-4"
+            <a class="btn btn-outline-secondary mt-3"
                 href="{reverse('core:cart-view')}?function=remove&id={item.id}"
                 role="button">
                     <i class="fas fa-cart-arrow-down"></i> Remove from cart
@@ -132,7 +132,7 @@ def itemCartButton(request, item):
     elif item.type == Item.Type.BUY_IT_NOW and item.id not in userCart:
         return mark_safe(
             f'''
-            <a class="btn btn-outline-primary mt-4"
+            <a class="btn btn-outline-primary mt-3"
                 href="{reverse('core:cart-view')}?function=add&id={item.id}"
                 role="button">
                     <i class="fas fa-cart-plus"></i> Add to cart
@@ -148,8 +148,7 @@ def renderItemCatalogue(request, item, showSeller):
     showSeller = eval(showSeller)
     itemExpireDttm = f'''
     <li class="list-inline-item">
-        <span class="text-muted"
-              data-abc="true">Expires at {item.expireDate.strftime('%B %d, %Y %H:%M:%S')}</span>
+        <span class="text-muted" data-abc="true">Expires at {item.expireDate.strftime('%B %d, %Y %H:%M:%S')}</span>
     </li>
     ''' if item.type == Item.Type.AUCTION else '<span></span>'
 
@@ -174,6 +173,10 @@ def renderItemCatalogue(request, item, showSeller):
     if averageRatingOutOfFive - int(averageRatingOutOfFive) == 0.5:
         stars += '<i class="fa fa-star-half"></i>'
 
+    itemDelivery = f'''
+        <p class="text-secondary">£{item.deliveryCharge} postage</p>
+        ''' if item.deliveryCharge else f'<p class="text-success">Free shipping</p>'
+
     itemContent = f'''
         <div class="card card-body mt-3">
             <div class="media align-items-center align-items-lg-start text-center text-lg-left flex-column flex-lg-row">
@@ -187,8 +190,7 @@ def renderItemCatalogue(request, item, showSeller):
                     </h6>
                     <ul class="list-inline list-inline-dotted mb-3 mb-lg-2">
                         <li class="list-inline-item">
-                            <span class="text-muted"
-                                  data-abc="true">{item.get_condition_display()}</span>
+                            <span class="text-muted" data-abc="true">{item.get_condition_display()}</span>
                         </li>
                         <li class="list-inline-item">
                             <span class="text-muted" data-abc="true">{item.get_type_display()}</span>
@@ -206,6 +208,7 @@ def renderItemCatalogue(request, item, showSeller):
                         {stars}
                     </div>
                     <div class="text-muted">{item.itemReview.count()} reviews</div>
+                    <div class="text-muted">{itemDelivery}</div>
                     {itemCartButton(request, item)}
                 </div>
             </div>
@@ -350,6 +353,18 @@ def renderUserListingTable(item):
 
 
 @register.simple_tag
+def renderItemImage(item, image):
+    itemContent = f'''
+        <div class="img-wraps">
+            <a class="closes" id="closes" title="Delete" style="padding-top: 0;"
+                href="{reverse('core:edit-listing', kwargs={'pk': item.pk})}?function=deleteImage&image={image.pk}">×</a>
+            <img class="img-responsive" src="{image.image.url}" alt="#" height="100" width="100">
+        </div>
+    '''
+    return mark_safe(itemContent)
+
+
+@register.simple_tag
 def renderUserBidsTable(bid):
     viewBiddingButton = '<span></span>'
     if bid[2] == Item.Type.AUCTION:
@@ -371,8 +386,3 @@ def renderUserBidsTable(bid):
         </tr>
     '''
     return mark_safe(itemContent)
-
-
-@register.simple_tag
-def itemConditionList():
-    return Item._meta.get_field('condition').choices
