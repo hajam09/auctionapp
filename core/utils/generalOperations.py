@@ -3,7 +3,7 @@ from functools import reduce
 
 from django.db.models import Q
 
-from core.models import Item
+from core.models import Item, Order
 
 
 def isPasswordStrong(password):
@@ -26,7 +26,23 @@ def performComplexItemSearch(query, filterList=None):
     filterList = filterList or []
     filterList.append(reduce(operator.or_, [Q(**{'deleteFl': False})]))
     attributesToSearch = ['title', 'description', 'condition']
+    filterList = filterListQuerySet(attributesToSearch, filterList, query)
+    return Item.objects.filter(reduce(operator.and_, filterList)).distinct()
 
+
+def performComplexOrderSearch(query, filterList=None):
+    filterList = filterList or []
+    filterList.append(reduce(operator.or_, [Q(**{'deleteFl': False})]))
+    # BUG: Searching doesn't quiet work here properly.
+    attributesToSearch = [
+        'number', 'tracking', 'item__title', 'item__description', 'item__seller__first_name', 'item__seller__last_name'
+    ]
+
+    filterList = filterListQuerySet(attributesToSearch, filterList, query)
+    return Order.objects.filter(reduce(operator.and_, filterList)).distinct()
+
+
+def filterListQuerySet(attributesToSearch, filterList, query):
     if query and query.strip():
         additionalQueryFilter = [
             reduce(
@@ -38,5 +54,4 @@ def performComplexItemSearch(query, filterList=None):
         ]
 
         filterList = filterList + additionalQueryFilter
-
-    return Item.objects.filter(reduce(operator.and_, filterList)).distinct()
+    return filterList

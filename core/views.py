@@ -14,7 +14,7 @@ from django.utils.encoding import DjangoUnicodeDecodeError, force_str
 from django.utils.http import urlsafe_base64_decode
 
 from core.forms import LoginForm, RegistrationForm, ItemForm
-from core.models import Item, Bid, Image
+from core.models import Item, Bid, Image, Order
 from core.utils import emailOperations, generalOperations
 
 
@@ -141,11 +141,11 @@ def newListing(request):
 @login_required
 def editListing(request, pk):
     if request.GET.get('function') == 'deleteImage' and request.GET.get('image'):
-        Image.objects.filter(id=request.GET.get('image'), item_id=pk).delete()
+        Image.objects.filter(id=request.GET.get('image'), item_id=pk, item__seller=request.user).delete()
         return redirect('core:edit-listing', pk=pk)
 
     try:
-        item = Item.objects.get(pk=pk)
+        item = Item.objects.get(pk=pk, seller=request.user)
     except Item.DoesNotExist:
         raise Http404
 
@@ -190,16 +190,16 @@ def userListings(request):
 
 @login_required
 def userPurchases(request):
-    # TODO: re-design the template from the image
     filterList = [
         reduce(
-            operator.and_, [Q(**{'buyer_id': request.user.id})]
+            operator.and_, [Q(**{'item__buyer_id': request.user.id})]
         )
     ]
-
-    itemList = generalOperations.performComplexItemSearch(request.GET.get('query'), filterList)
+    orderList = generalOperations.performComplexOrderSearch(request.GET.get('query'), filterList).select_related(
+        'item__seller'
+    )
     context = {
-        'itemList': itemList
+        'orderList': orderList
     }
     return render(request, 'core/userPurchases.html', context)
 
@@ -247,8 +247,8 @@ def itemsFromUser(request, pk):
     ]
     context = {
         'itemList': generalOperations.performComplexItemSearch(request.GET.get('query'), filterList).prefetch_related(
-            'itemReview')
-
+            'itemReview'
+        )
     }
     return render(request, 'core/itemsFromUser.html', context)
 
@@ -262,7 +262,18 @@ def cartView(request):
         return redirect('core:index-view')
 
     if request.method == 'POST':
-        Item.objects.filter(id__in=userCart).update(buyer_id=request.user.id)
+        purchaseItems = Item.objects.filter(id__in=userCart)
+        Order.objects.bulk_create(
+            [
+                Order(
+                    total=item.deliveryCharge or 0 + item.price,
+                    item=item,
+                    quantity=1,
+                )
+                for item in purchaseItems
+            ]
+        )
+        purchaseItems.update(buyer_id=request.user.id)
         request.session['cart'] = []
         messages.success(
             request, 'Order is complete!'

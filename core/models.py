@@ -1,3 +1,5 @@
+import random
+
 from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
@@ -56,12 +58,16 @@ class Bid(BaseModel):
     price = models.DecimalField(max_digits=9, decimal_places=2)
 
 
+def generateOrderNumber():
+    return random.randint(1000000000, 9999999999)
+
+
 class Order(BaseModel):
     total = models.DecimalField(max_digits=9, decimal_places=2)
-    number = models.CharField(max_length=16)
+    number = models.CharField(max_length=16, default=generateOrderNumber)
     item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='itemOrder')
     quantity = models.PositiveSmallIntegerField()
-    tracking = models.CharField(max_length=64)
+    tracking = models.CharField(blank=True, null=True, max_length=64)
 
 
 class OrderStatus(BaseModel):

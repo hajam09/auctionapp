@@ -218,6 +218,78 @@ def renderItemCatalogue(request, item, showSeller):
 
 
 @register.simple_tag
+def renderItemCatalogueWithOrderFurtherDetailsComponent(order):
+    itemContent = f'''
+        <div class="card card-body mt-3">
+            <div class="media align-items-center align-items-lg-start text-center text-lg-left flex-column flex-lg-row">
+                <div class="mr-2 mb-3 mb-lg-0">
+                    <img src="https://cdn-thumbs.imagevenue.com/09/85/ad/ME1573QH_t.jpg" width="150"
+                         height="150" alt="">
+                </div>
+                <div class="media-body">
+                    <h6 class="media-title font-weight-semibold">
+                        <a href="/item-view/1/" data-abc="true">{order.item.title}</a>
+                    </h6>
+                    <ul class="list-inline list-inline-dotted mb-3 mb-lg-2">
+                        <li class="list-inline-item">
+                            <span class="text-muted" data-abc="true">New</span>
+                        </li>
+                        <li class="list-inline-item">
+                            <span class="text-muted" data-abc="true">Buy It Now</span>
+                        </li>
+                    </ul>
+                    <ul class="list-inline list-inline-dotted mb-0">
+                        <li class="list-inline-item">
+                            Tracking number:
+                            <a href="/user/1/items" data-abc="true">Not provided yet.</a>
+                        </li>
+                    </ul>
+                    <ul class="list-inline list-inline-dotted mb-0">
+                        <li class="list-inline-item">
+                            Sold by:
+                            <a href="/user/1/items"
+                               data-abc="true">{order.item.seller.get_short_name()}</a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="mt-3 mt-lg-0 ml-lg-3 text-center">
+                    <ul class="no-bullets" style="list-style-type: none; margin: 0; padding: 0;">
+                        <li>
+                            <a class="btn btn-primary mt-3" style="width: 100%;" href="/cart/?function=add&amp;id=1"
+                               role="button">View order details
+                            </a>
+                        </li>
+                        <li>
+                            <a class="btn btn-outline-primary mt-3" style="width: 100%;" href="{reverse('core:items-from-user-view', kwargs={'pk': order.item.seller.pk})}"
+                               role="button">View seller's other items
+                            </a>
+                        </li>
+                        <li>
+                            <div style="height: 15px"></div>
+                            <a class="btn btn-outline-primary dropdown-toggle" href="#" role="button" style="width: 100%;"
+                               id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true"
+                               aria-expanded="false">
+                                More actions
+                            </a>
+                            <div class="dropdown-menu" aria-labelledby="dropdownMenuLink"
+                                 style="width: 196px;">
+                                <a class="dropdown-item" href="#">Contact seller</a>
+                                <a class="dropdown-item" href="#">Return this item</a>
+                                <a class="dropdown-item" href="#">leave feedback</a>
+                                <a class="dropdown-item" href="#">I didn't receive it</a>
+                                <a class="dropdown-item" href="#">Add note</a>
+                                <a class="dropdown-item" href="#">Hide order</a>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    '''
+    return mark_safe(itemContent)
+
+
+@register.simple_tag
 def renderItemCartProductCatalogue(item):
     itemContent = f'''
         <div class="card mb-3">
@@ -356,7 +428,7 @@ def renderUserListingTable(item):
 def renderItemImage(item, image):
     itemContent = f'''
         <div class="img-wraps">
-            <a class="closes" id="closes" title="Delete" style="padding-top: 0;"
+            <a class="closes" title="Delete" style="padding-top: 0;"
                 href="{reverse('core:edit-listing', kwargs={'pk': item.pk})}?function=deleteImage&image={image.pk}">×</a>
             <img class="img-responsive" src="{image.image.url}" alt="#" height="100" width="100">
         </div>
