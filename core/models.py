@@ -64,7 +64,7 @@ def generateOrderNumber():
 
 class Order(BaseModel):
     total = models.DecimalField(max_digits=9, decimal_places=2)
-    number = models.CharField(max_length=16, default=generateOrderNumber)
+    number = models.CharField(max_length=16, unique=True, default=generateOrderNumber)
     item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='itemOrder')
     quantity = models.PositiveSmallIntegerField()
     tracking = models.CharField(blank=True, null=True, max_length=64)

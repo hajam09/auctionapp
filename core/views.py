@@ -14,7 +14,7 @@ from django.utils.encoding import DjangoUnicodeDecodeError, force_str
 from django.utils.http import urlsafe_base64_decode
 
 from core.forms import LoginForm, RegistrationForm, ItemForm
-from core.models import Item, Bid, Image, Order
+from core.models import Item, Bid, Image, Order, OrderStatus
 from core.utils import emailOperations, generalOperations
 
 
@@ -198,8 +198,13 @@ def userPurchases(request):
     orderList = generalOperations.performComplexOrderSearch(request.GET.get('query'), filterList).select_related(
         'item__seller'
     )
+    orderStatusList = OrderStatus.objects.filter(
+        order_id__in=orderList.values_list('id', flat=True)
+    ).select_related('order').order_by('order', '-createdDttm').distinct('order')
+
     context = {
-        'orderList': orderList
+        'orderList': orderList,
+        'orderStatusList': orderStatusList
     }
     return render(request, 'core/userPurchases.html', context)
 
@@ -263,16 +268,18 @@ def cartView(request):
 
     if request.method == 'POST':
         purchaseItems = Item.objects.filter(id__in=userCart)
-        Order.objects.bulk_create(
-            [
-                Order(
-                    total=item.deliveryCharge or 0 + item.price,
-                    item=item,
-                    quantity=1,
-                )
-                for item in purchaseItems
-            ]
-        )
+        orderList = []
+        orderStatusList = []
+        for item in purchaseItems:
+            order = Order(total=item.deliveryCharge or 0 + item.price, item=item, quantity=1)
+            orderStatus = OrderStatus(status=OrderStatus.Status.ORDERED, order=order)
+
+            orderList.append(order)
+            orderStatusList.append(orderStatus)
+
+        Order.objects.bulk_create(orderList)
+        OrderStatus.objects.bulk_create(orderStatusList)
+
         purchaseItems.update(buyer_id=request.user.id)
         request.session['cart'] = []
         messages.success(

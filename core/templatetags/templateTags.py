@@ -101,6 +101,25 @@ def userBidStatus(bid):
 
 
 @register.simple_tag
+def querySearchComponent(request):
+    value = f"value='{request.GET.get('query')}'" if request.GET.get('query') else ''
+    itemContent = f'''
+    <form method="GET" action="{request.path}">
+            <div class="row">
+                <div class="col">
+                    <input type="text" id="query" name="query" class="form-control col" {value}
+                           placeholder="Search for anything..." required/>
+                </div>
+                <div class="col-auto">
+                    <input type="submit" class="btn btn-outline-primary" value="Search"/>
+                </div>
+            </div>
+        </form>
+    '''
+    return mark_safe(itemContent)
+
+
+@register.simple_tag
 def itemCartButton(request, item):
     if not request.user.is_authenticated:
         return mark_safe('<span></span>')
@@ -218,7 +237,8 @@ def renderItemCatalogue(request, item, showSeller):
 
 
 @register.simple_tag
-def renderItemCatalogueWithOrderFurtherDetailsComponent(order):
+def renderItemCatalogueWithOrderFurtherDetailsComponent(order, orderStatusList):
+    orderStatus = next((os for os in orderStatusList if os.order == order), None)
     itemContent = f'''
         <div class="card card-body mt-3">
             <div class="media align-items-center align-items-lg-start text-center text-lg-left flex-column flex-lg-row">
@@ -230,19 +250,16 @@ def renderItemCatalogueWithOrderFurtherDetailsComponent(order):
                     <h6 class="media-title font-weight-semibold">
                         <a href="/item-view/1/" data-abc="true">{order.item.title}</a>
                     </h6>
-                    <ul class="list-inline list-inline-dotted mb-3 mb-lg-2">
-                        <li class="list-inline-item">
-                            <span class="text-muted" data-abc="true">New</span>
-                        </li>
-                        <li class="list-inline-item">
-                            <span class="text-muted" data-abc="true">Buy It Now</span>
-                        </li>
-                    </ul>
                     <ul class="list-inline list-inline-dotted mb-0">
-                        <li class="list-inline-item">
-                            Tracking number:
-                            <a href="/user/1/items" data-abc="true">Not provided yet.</a>
-                        </li>
+                        <li class="list-inline-item">Order date: {order.createdDttm.strftime('%d %h, %Y')}</li>
+                        &nbsp;&nbsp;&nbsp;
+                        <li class="list-inline-item">Order total: £{order.total}</li>
+                        &nbsp;&nbsp;&nbsp;
+                        <li class="list-inline-item">Order number: {order.number}</li>
+                    </ul>
+                    <ul class="list-inline list-inline-dotted mb-3 mb-lg-2">
+                        <li>Order status: {orderStatus.get_status_display()}</li>
+                        <li>Tracking number: {order.tracking if order.tracking else 'Not provided yet'}</li>
                     </ul>
                     <ul class="list-inline list-inline-dotted mb-0">
                         <li class="list-inline-item">

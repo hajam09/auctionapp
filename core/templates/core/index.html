@@ -4,17 +4,7 @@
 {% block content %}
     <br>
     <div class="container">
-        <form method="GET" action="{{ request.path }}">
-            <div class="row">
-                <div class="col">
-                    <input type="text" id="query" name="query" class="form-control col"
-                           placeholder="Search for anything..." required/>
-                </div>
-                <div class="col-auto">
-                    <input type="submit" class="btn btn-outline-primary" value="Search"/>
-                </div>
-            </div>
-        </form>
+        {% querySearchComponent request %}
         <br><br>
         <div class="container d-flex justify-content-center mt-50 mb-50">
             <div class="row">
