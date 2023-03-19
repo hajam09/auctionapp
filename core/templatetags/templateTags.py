@@ -3,7 +3,7 @@ from django.db.models import Sum, Avg
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 
-from core.models import Item
+from core.models import Item, Bid, Image
 from core.utils.navigationBar import Icon, linkItem
 
 register = template.Library()
@@ -17,8 +17,8 @@ def navigationPanel(request):
     ]
 
     if request.user.is_authenticated:
-        cart = request.session.get('cart')
-        if cart is not None and len(cart) > 0:
+        cart = request.session.get('cart', {})
+        if len(cart) > 0:
             links.append(
                 linkItem(f'Cart ({len(cart)})', reverse('core:cart-view'), None)
             )
@@ -124,19 +124,16 @@ def itemCartButton(request, item):
     if not request.user.is_authenticated:
         return mark_safe('<span></span>')
 
-    userCart = request.session.get('cart')
-    if userCart is None:
-        request.session['cart'] = []
-        userCart = []
+    userCart = request.session.get('cart', {})
 
     if request.user == item.seller:
         return mark_safe(
             f'''
-                <a class="btn btn-outline-dark mt-3" href="{reverse('core:edit-listing', kwargs={'pk': item.pk})}" role="button">
-                    <i class="fas fa-edit"></i>
-                    Edit item
-                </a>
-                '''
+            <a class="btn btn-outline-dark mt-3" href="{reverse('core:edit-listing', kwargs={'pk': item.pk})}" role="button">
+                <i class="fas fa-edit"></i>
+                Edit item
+            </a>
+            '''
         )
     elif item.type == Item.Type.BUY_IT_NOW and item.id in userCart:
         return mark_safe(
@@ -473,5 +470,134 @@ def renderUserBidsTable(bid):
                    {viewBiddingButton}
             </td>
         </tr>
+    '''
+    return mark_safe(itemContent)
+
+
+def getItemQuantityComponent(stock):
+    itemContent = f'''
+        <input type="hidden" name="addToCart">
+        <div class="row" style="margin-left: -30px;">
+            <div class="col-md-auto" style="padding-top: 8px;margin-left: 19px;">
+                Quantity:
+            </div>
+            <div class="col" style="padding-left: 0;">
+                <input class="form-control" type="number" name="quantity" value="1" max="{stock}" style="max-width: 10%;">
+            </div>
+            <div class="col" style="margin-left: -435px;padding-top: 4px;">
+                <button type="submit" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-cart-plus"></i> Add to cart
+                </button>
+            </div>
+        </div>
+    '''
+    return mark_safe(itemContent)
+
+
+def getItemAuctionComponent(currentPrice):
+    itemContent = f'''
+        <input type="hidden" name="submitBidForItem">
+        <div class="row" style="margin-left: -30px;">
+            <div class="col-md-auto" style="padding-top: 8px;margin-left: 19px;">
+                Bid amount:
+            </div>
+            <div class="col" style="padding-left: 0;">
+                <input class="form-control" type="number" name="bidAmount" min={currentPrice} step=".1" style="max-width: 18%;">
+            </div>
+            <div class="col" style="margin-left: -360px;padding-top: 4px;">
+                <button type="submit" class="btn btn-outline-primary btn-sm">
+                    <i class="fa fa-arrow-up"></i> Submit bid
+                </button>
+            </div>
+        </div>
+    '''
+    return mark_safe(itemContent)
+
+
+@register.simple_tag
+def renderItemViewComponent(request, item):
+    if item.type == Item.Type.BUY_IT_NOW:
+        itemPrice = f'''
+            <dd class="col-sm-2">Price:</dd>
+            <dd class="col-sm-10">£{item.price}</dd>
+        '''
+        currentPrice = item.price
+    else:
+        latestBid = Bid.objects.filter(item=item).last()
+        currentPrice = latestBid.price if latestBid else item.price
+        itemPrice = f'''
+            <dd class="col-sm-2">Current bid:</dd>
+            <dd class="col-sm-10">£{currentPrice}</dd>
+        '''
+
+    imageList = Image.objects.filter(item=item)
+    indicators = ''
+    images = ''
+    counter = 0
+
+    for image in imageList:
+        active = 'active' if image == imageList[0] else ''
+        indicators += f'''<li data-target="#carousel" data-slide-to="{counter}" class="{active}"></li>'''
+        images += f'''
+        <div class="carousel-item {active}">
+            <img class="d-block w-100" src="{image.image.url}" alt="First slide" height="450px;">
+        </div>
+        '''
+        counter += 1
+
+    itemContent = f'''
+    <div class="container-fluid p-3" style="max-width: 1500px;">
+        <div class="row">
+            <div class="col-6">
+            <div id="carousel" class="carousel slide" data-ride="carousel">
+                <ol class="carousel-indicators">
+                    {indicators}
+                </ol>
+                <div class="carousel-inner">
+                    {images}
+                </div>
+                <a class="carousel-control-prev" href="#carousel" role="button" data-slide="prev">
+                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                    <span class="sr-only">Previous</span>
+                </a>
+                <a class="carousel-control-next" href="#carousel" role="button" data-slide="next">
+                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                    <span class="sr-only">Next</span>
+                </a>
+            </div>
+            </div>
+            <div class="col-6 align-self-center">
+                <h4>{item.title}</h4>
+                <dl class="row">
+                    <dd class="col-sm-2">Condition:</dd>
+                    <dd class="col-sm-10">{item.get_condition_display()}</dd>
+
+                    <dd class="col-sm-2">Ratings:</dd>
+                    <dd class="col-sm-10">
+                        <i class="fa fa-star"></i><i class="fa fa-star"></i>
+                    </dd>
+                    
+                    {itemPrice}
+
+                    <dd class="col-sm-2">Stock:</dd>
+                    <dd class="col-sm-10">{item.stock} available</dd>
+
+                    <dd class="col-sm-2">Postage:</dd>
+                    <dd class="col-sm-10">{'£' + str(item.deliveryCharge) if item.deliveryCharge else 'Free postage'}</dd>
+
+                    <dd class="col-sm-2">Returns:</dd>
+                    <dd class="col-sm-10">TODO</dd>
+                </dl>
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <form method="post">
+                            <input type="hidden" name="csrfmiddlewaretoken" value="{request.META.get('CSRF_COOKIE')}">
+                            {getItemQuantityComponent(item.stock) if item.type == Item.Type.BUY_IT_NOW else getItemAuctionComponent(currentPrice)}
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     '''
     return mark_safe(itemContent)

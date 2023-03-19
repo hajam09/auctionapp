@@ -14,7 +14,7 @@ from django.utils.encoding import DjangoUnicodeDecodeError, force_str
 from django.utils.http import urlsafe_base64_decode
 
 from core.forms import LoginForm, RegistrationForm, ItemForm
-from core.models import Item, Bid, Image, Order, OrderStatus
+from core.models import Item, Bid, Image, OrderStatus
 from core.utils import emailOperations, generalOperations
 
 
@@ -190,6 +190,9 @@ def userListings(request):
 
 @login_required
 def userPurchases(request):
+    # TODO: View order details
+    # TODO: More actions: Contact seller | Return this item | Leave feedback | I didn't receive it | Add note
+
     filterList = [
         reduce(
             operator.and_, [Q(**{'item__buyer_id': request.user.id})]
@@ -238,6 +241,28 @@ def itemView(request, pk):
     except Item.DoesNotExist:
         raise Http404
 
+    if request.method == 'POST' and 'addToCart' in request.POST:
+        userCart = request.session.get('cart', {})
+        userCart[pk] = int(request.POST.get('quantity'))
+        request.session['cart'] = userCart
+        return redirect('core:item-view', pk=pk)
+
+    elif request.method == 'POST' and 'submitBidForItem' in request.POST:
+        bidAmount = float(request.POST.get('bidAmount'))
+        latestBid = Bid.objects.filter(item_id=pk).last()
+        currentPrice = latestBid.price if latestBid else item.price
+
+        if bidAmount <= float(currentPrice):
+            messages.error(
+                request,
+                'Bid amount must be higher than current bid value.'
+            )
+        else:
+            Bid.objects.create(
+                item_id=pk, bidder_id=request.user.id, price=bidAmount
+            )
+        return redirect('core:item-view', pk=pk)
+
     context = {
         'item': item
     }
@@ -260,46 +285,48 @@ def itemsFromUser(request, pk):
 
 @login_required
 def cartView(request):
-    userCart = request.session.get('cart')
-    itemId = int(request.GET.get('id')) if request.GET.get('id') is not None else None
-    if userCart is None or userCart == [] and not request.GET.get('function'):
-        request.session['cart'] = []
-        return redirect('core:index-view')
+    userCart = request.session.get('cart', {})
 
-    if request.method == 'POST':
-        purchaseItems = Item.objects.filter(id__in=userCart)
-        orderList = []
-        orderStatusList = []
-        for item in purchaseItems:
-            order = Order(total=item.deliveryCharge or 0 + item.price, item=item, quantity=1)
-            orderStatus = OrderStatus(status=OrderStatus.Status.ORDERED, order=order)
-
-            orderList.append(order)
-            orderStatusList.append(orderStatus)
-
-        Order.objects.bulk_create(orderList)
-        OrderStatus.objects.bulk_create(orderStatusList)
-
-        purchaseItems.update(buyer_id=request.user.id)
-        request.session['cart'] = []
-        messages.success(
-            request, 'Order is complete!'
-        )
-        return redirect('core:index-view')
-
-    if request.GET.get('function') == 'add' and itemId not in userCart:
-        userCart.append(itemId)
-    elif request.GET.get('function') == 'remove' and itemId in userCart:
-        userCart.remove(itemId)
-
-    request.session['cart'] = userCart
-
-    previousUrl = request.META.get('HTTP_REFERER')
-    if previousUrl and request.GET.get('function'):
-        return redirect(previousUrl)
-
-    items = Item.objects.filter(id__in=userCart)
-    context = {
-        'itemList': items
-    }
-    return render(request, 'core/cartView.html', context)
+    # userCart = request.session.get('cart')
+    # itemId = int(request.GET.get('id')) if request.GET.get('id') is not None else None
+    # if userCart is None or userCart == [] and not request.GET.get('function'):
+    #     request.session['cart'] = []
+    #     return redirect('core:index-view')
+    #
+    # if request.method == 'POST':
+    #     purchaseItems = Item.objects.filter(id__in=userCart)
+    #     orderList = []
+    #     orderStatusList = []
+    #     for item in purchaseItems:
+    #         order = Order(total=item.deliveryCharge or 0 + item.price, item=item, quantity=1)
+    #         orderStatus = OrderStatus(status=OrderStatus.Status.ORDERED, order=order)
+    #
+    #         orderList.append(order)
+    #         orderStatusList.append(orderStatus)
+    #
+    #     Order.objects.bulk_create(orderList)
+    #     OrderStatus.objects.bulk_create(orderStatusList)
+    #
+    #     purchaseItems.update(buyer_id=request.user.id)
+    #     request.session['cart'] = []
+    #     messages.success(
+    #         request, 'Order is complete!'
+    #     )
+    #     return redirect('core:index-view')
+    #
+    # if request.GET.get('function') == 'add' and itemId not in userCart:
+    #     userCart.append(itemId)
+    # elif request.GET.get('function') == 'remove' and itemId in userCart:
+    #     userCart.remove(itemId)
+    #
+    # request.session['cart'] = userCart
+    #
+    # previousUrl = request.META.get('HTTP_REFERER')
+    # if previousUrl and request.GET.get('function'):
+    #     return redirect(previousUrl)
+    #
+    # items = Item.objects.filter(id__in=userCart)
+    # context = {
+    #     'itemList': items
+    # }
+    return render(request, 'core/cartView.html')

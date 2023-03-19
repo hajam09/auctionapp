@@ -203,6 +203,18 @@ class ItemForm(forms.Form):
             }
         )
     )
+    stock = forms.IntegerField(
+        label='Quantity/stocks you have left',
+        required=False,
+        widget=forms.NumberInput(
+            attrs={
+                'class': 'form-control',
+                'style': 'width: 100%; border-radius: 0',
+                'min': '1',
+                'value': '1',
+            }
+        )
+    )
     images = forms.ImageField(
         label='Upload Item Images',
         required=True,
@@ -227,6 +239,7 @@ class ItemForm(forms.Form):
             self.base_fields['expireDate'].initial = item.expireDate.strftime(
                 '%Y-%m-%d %H:%M') if item.expireDate else None
             self.base_fields['price'].initial = item.price
+            self.base_fields['stock'].initial = item.stock
             self.base_fields['deliveryCharge'].initial = item.deliveryCharge
 
     def save(self):
@@ -238,7 +251,8 @@ class ItemForm(forms.Form):
             price=self.cleaned_data.get('price'),
             deliveryCharge=self.cleaned_data.get('deliveryCharge'),
             type=Item.Type.AUCTION if self.cleaned_data.get('expireDate') else Item.Type.BUY_IT_NOW,
-            condition=Item.Condition[self.cleaned_data.get('condition')]
+            condition=Item.Condition[self.cleaned_data.get('condition')],
+            stock=self.cleaned_data.get('stock')
         )
         item.save()
         Image.objects.bulk_create([Image(item=item, image=i) for i in self.request.FILES.getlist('images')])
@@ -252,6 +266,7 @@ class ItemForm(forms.Form):
         self.item.deliveryCharge = self.cleaned_data.get('deliveryCharge')
         self.item.type = Item.Type.AUCTION if self.cleaned_data.get('expireDate') else Item.Type.BUY_IT_NOW,
         self.item.condition = Item.Condition[self.cleaned_data.get('condition')]
+        self.item.stock = self.cleaned_data.get('stock')
         self.item.save()
         Image.objects.bulk_create([Image(item=self.item, image=i) for i in self.request.FILES.getlist('images')])
         return self.item

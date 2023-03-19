@@ -6,13 +6,11 @@
     <div class="container">
         {% querySearchComponent request %}
         <br><br>
-        <div class="container d-flex justify-content-center mt-50 mb-50">
-            <div class="row">
-                <div class="col-md-12" style="width: 1100px;">
-                    {% for item in itemList %}
-                        {% renderItemCatalogue request item showSeller='False' %}
-                    {% endfor %}
-                </div>
+        <div class="row">
+            <div class="col-md-12" style="width: 1100px;">
+                {% for item in itemList %}
+                    {% renderItemCatalogue request item showSeller='False' %}
+                {% endfor %}
             </div>
         </div>
     </div>

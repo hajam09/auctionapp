@@ -39,6 +39,7 @@ class Item(BaseModel):
     deliveryCharge = models.DecimalField(blank=True, null=True, max_digits=9, decimal_places=2)
     type = models.CharField(max_length=16, choices=Type.choices, default=Type.BUY_IT_NOW)
     condition = models.CharField(max_length=32, choices=Condition.choices, default=Condition.NEW)
+    stock = models.PositiveSmallIntegerField(default=1)
 
     def __str__(self):
         return self.title
