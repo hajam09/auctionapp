@@ -8,6 +8,10 @@ from core.utils.navigationBar import Icon, linkItem
 
 register = template.Library()
 
+FULL_STAR = '<i class="fas fa-star"></i>'
+HALF_STAR = '<i class="	fas fa-star-half-alt"></i>'
+EMPTY_STAR = '<i class="far fa-star"></i>'
+
 
 @register.simple_tag
 def navigationPanel(request):
@@ -159,6 +163,21 @@ def itemCartButton(request, item):
     return mark_safe('<span></span>')
 
 
+def generateStarRatingFromFloat(rating):
+    rating = round(rating * 2) / 2
+    stars = ''
+    for i in range(int(rating)):
+        stars += FULL_STAR
+
+    if rating - int(rating) == 0.5:
+        stars += HALF_STAR
+
+    for i in range(int(5 - rating)):
+        stars += EMPTY_STAR
+
+    return stars
+
+
 @register.simple_tag
 def renderItemCatalogue(request, item, showSeller):
     showSeller = eval(showSeller)
@@ -177,17 +196,8 @@ def renderItemCatalogue(request, item, showSeller):
         </li>
         '''
 
-    # should be either .0 or .5
-    if item.itemReview.count() == 0:
-        averageRatingOutOfFive = 0
-    else:
-        averageRatingOutOfFive = round(item.itemReview.aggregate(avg=Avg('rating')).get('avg') * 2) / 2
-
-    stars = ''
-    for i in range(int(averageRatingOutOfFive)):  # rounds it lower
-        stars += '<i class="fa fa-star"></i>'
-    if averageRatingOutOfFive - int(averageRatingOutOfFive) == 0.5:
-        stars += '<i class="fa fa-star-half"></i>'
+    averageRating = item.itemReview.aggregate(avg=Avg('rating')).get('avg')
+    rating = generateStarRatingFromFloat(averageRating) if averageRating else ''
 
     itemDelivery = f'''
         <p class="text-secondary">£{item.deliveryCharge} postage</p>
@@ -221,7 +231,7 @@ def renderItemCatalogue(request, item, showSeller):
                 <div class="mt-3 mt-lg-0 ml-lg-3 text-center">
                     <h3 class="mb-0 font-weight-semibold">£{item.price}</h3>
                     <div>
-                        {stars}
+                        {rating}
                     </div>
                     <div class="text-muted">{item.itemReview.count()} reviews</div>
                     <div class="text-muted">{itemDelivery}</div>
@@ -545,6 +555,9 @@ def renderItemViewComponent(request, item):
         '''
         counter += 1
 
+    averageRating = item.itemReview.aggregate(avg=Avg('rating')).get('avg')
+    rating = generateStarRatingFromFloat(averageRating) if averageRating else 'No ratings yet.'
+
     itemContent = f'''
     <div class="container-fluid p-3" style="max-width: 1500px;">
         <div class="row">
@@ -573,9 +586,7 @@ def renderItemViewComponent(request, item):
                     <dd class="col-sm-10">{item.get_condition_display()}</dd>
 
                     <dd class="col-sm-2">Ratings:</dd>
-                    <dd class="col-sm-10">
-                        <i class="fa fa-star"></i><i class="fa fa-star"></i>
-                    </dd>
+                    <dd class="col-sm-10">{rating}</dd>
                     
                     {itemPrice}
 
