@@ -277,8 +277,7 @@ def itemsFromUser(request, pk):
     ]
     context = {
         'itemList': generalOperations.performComplexItemSearch(request.GET.get('query'), filterList).prefetch_related(
-            'itemReview'
-        )
+            'itemReview').select_related('seller')
     }
     return render(request, 'core/itemsFromUser.html', context)
 

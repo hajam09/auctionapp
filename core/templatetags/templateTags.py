@@ -133,7 +133,7 @@ def itemCartButton(request, item):
     if request.user == item.seller:
         return mark_safe(
             f'''
-            <a class="btn btn-outline-dark mt-3" href="{reverse('core:edit-listing', kwargs={'pk': item.pk})}" role="button">
+            <a class="btn btn-outline-dark mt-3" href="{reverse('core:edit-listing', kwargs={'pk': item.pk})}" role="button" style="margin-bottom: -25px;">
                 <i class="fas fa-edit"></i>
                 Edit item
             </a>
@@ -178,137 +178,171 @@ def generateStarRatingFromFloat(rating):
     return stars
 
 
-@register.simple_tag
-def renderItemCatalogue(request, item, showSeller):
-    showSeller = eval(showSeller)
-    itemExpireDttm = f'''
-    <li class="list-inline-item">
-        <span class="text-muted" data-abc="true">Expires at {item.expireDate.strftime('%B %d, %Y %H:%M:%S')}</span>
-    </li>
-    ''' if item.type == Item.Type.AUCTION else '<span></span>'
-
-    sellerLine = '<span></span>'
-    if showSeller:
-        sellerLine = f'''
+def getItemSellingDetails(item, showSeller):
+    sellerLine = f'''
         <li class="list-inline-item">
             All items from
             <a href="{reverse('core:items-from-user-view', kwargs={'pk': item.seller.pk})}" data-abc="true">{item.seller.get_short_name()}</a>
         </li>
-        '''
+        ''' if showSeller else '<span></span>'
 
+    itemExpireDttm = f'''
+        <li class="list-inline-item">
+            <span class="text-muted" data-abc="true">Expires at {item.expireDate.strftime('%B %d, %Y %H:%M:%S')}</span>
+        </li>
+        ''' if item.type == Item.Type.AUCTION else '<span></span>'
+
+    itemContent = f'''
+        <ul class="list-inline list-inline-dotted mb-3 mb-lg-2">
+            <li class="list-inline-item">
+                <span class="text-muted" data-abc="true">{item.get_condition_display()}</span>
+            </li>
+            <li class="list-inline-item">
+                <span class="text-muted" data-abc="true">{item.get_type_display()}</span>
+            </li>
+            {itemExpireDttm}
+        </ul>
+        <p class="mb-3">{item.description} </p>
+        <ul class="list-inline list-inline-dotted mb-0">
+            {sellerLine}
+        </ul>
+    '''
+    return mark_safe(itemContent)
+
+
+def getPurchaseOrderDetails(order, orderStatusList):
+    orderStatus = next((os for os in orderStatusList if os.order == order), None)
+    itemContent = f'''
+        <ul class="list-inline list-inline-dotted mb-0">
+            <li class="list-inline-item">Order date: {order.createdDttm.strftime('%d %h, %Y')}</li>
+            &nbsp;&nbsp;&nbsp;
+            <li class="list-inline-item">Order total: £{order.total}</li>
+            &nbsp;&nbsp;&nbsp;
+            <li class="list-inline-item">Order number: {order.number}</li>
+        </ul>
+        <ul class="list-inline list-inline-dotted mb-3 mb-lg-2">
+            <li>Order status: {orderStatus.get_status_display()}</li>
+            <li>Tracking number: {order.tracking if order.tracking else 'Not provided yet'}</li>
+        </ul>
+        <ul class="list-inline list-inline-dotted mb-0">
+            <li class="list-inline-item">
+                Sold by:
+                <a href="/user/1/items" data-abc="true">{order.item.seller.get_short_name()}</a>
+            </li>
+        </ul>
+    '''
+    return mark_safe(itemContent)
+
+
+def getItemPricingAndReviewDetails(request, item):
     averageRating = None
     if item.itemReview.count() > 0:
         averageRating = sum([i.rating for i in item.itemReview.all()]) / item.itemReview.count()
-    rating = generateStarRatingFromFloat(averageRating) if averageRating else ''
+    rating = generateStarRatingFromFloat(averageRating) if averageRating else '<div style="height: 20px;"></div>'
 
     itemDelivery = f'''
-        <p class="text-secondary">£{item.deliveryCharge} postage</p>
-        ''' if item.deliveryCharge else f'<p class="text-success">Free shipping</p>'
+        <p class="text-secondary" style="margin-bottom: -5px;">£{item.deliveryCharge} postage</p>
+    ''' if item.deliveryCharge else f'<p class="text-success">Free shipping</p>'
 
     itemContent = f'''
-        <div class="card card-body mt-3">
-            <div class="media align-items-center align-items-lg-start text-center text-lg-left flex-column flex-lg-row">
-                <div class="mr-2 mb-3 mb-lg-0">
-                    <img src="https://cdn-thumbs.imagevenue.com/09/85/ad/ME1573QH_t.jpg" width="150" height="150" alt="">
-                </div>
-                <div class="media-body">
-                    <h6 class="media-title font-weight-semibold">
-                        <a href="{reverse('core:item-view', kwargs={'pk': item.pk})}"
-                           data-abc="true">{item.title}</a>
-                    </h6>
-                    <ul class="list-inline list-inline-dotted mb-3 mb-lg-2">
-                        <li class="list-inline-item">
-                            <span class="text-muted" data-abc="true">{item.get_condition_display()}</span>
-                        </li>
-                        <li class="list-inline-item">
-                            <span class="text-muted" data-abc="true">{item.get_type_display()}</span>
-                        </li>
-                        {itemExpireDttm}
-                    </ul>
-                    <p class="mb-3">{item.description} </p>
-                    <ul class="list-inline list-inline-dotted mb-0">
-                        {sellerLine}
-                    </ul>
-                </div>
-                <div class="mt-3 mt-lg-0 ml-lg-3 text-center">
-                    <h3 class="mb-0 font-weight-semibold">£{item.price}</h3>
-                    <div>
-                        {rating}
-                    </div>
-                    <div class="text-muted">{item.itemReview.count()} reviews</div>
-                    <div class="text-muted">{itemDelivery}</div>
-                    {itemCartButton(request, item)}
-                </div>
+        <div class="mt-3 mt-lg-0 ml-lg-3 text-center">
+            <h3 class="mb-0 font-weight-semibold">£{item.price}</h3>
+            <div>
+                {rating}
             </div>
+            <div class="text-muted">{item.itemReview.count()} reviews</div>
+            <div class="text-muted">{itemDelivery}</div>
+            {itemCartButton(request, item)}
+        </div>
+        '''
+    return mark_safe(itemContent)
+
+
+def getOrderDetailsAndMoreAction():
+    itemContent = f'''
+        <div class="text-center" style="margin-top: -15px;">
+            <ul class="no-bullets" style="list-style-type: none; margin: 0; padding: 0;">
+                <li>
+                    <a class="btn btn-primary mt-3" style="width: 100%;" href="/cart/?function=add&amp;id=1"
+                       role="button">View order details
+                    </a>
+                </li>
+                <li>
+                    <a class="btn btn-outline-primary mt-3" style="width: 100%;" href="#"
+                       role="button">View seller's other items
+                    </a>
+                </li>
+                <li>
+                    <div style="height: 15px"></div>
+                    <a class="btn btn-outline-primary dropdown-toggle" href="#" role="button" style="width: 100%;"
+                       id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true"
+                       aria-expanded="false">
+                        More actions
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="dropdownMenuLink"
+                         style="width: 196px;">
+                        <a class="dropdown-item" href="#">Contact seller</a>
+                        <a class="dropdown-item" href="#">Return this item</a>
+                        <a class="dropdown-item" href="#">leave feedback</a>
+                        <a class="dropdown-item" href="#">I didn't receive it</a>
+                        <a class="dropdown-item" href="#">Add note</a>
+                        <a class="dropdown-item" href="#">Hide order</a>
+                    </div>
+                </li>
+            </ul>
         </div>
     '''
     return mark_safe(itemContent)
 
 
 @register.simple_tag
-def renderItemCatalogueWithOrderFurtherDetailsComponent(order, orderStatusList):
-    orderStatus = next((os for os in orderStatusList if os.order == order), None)
+def renderItemCatalogue(request, item, showItemImage, showSeller, showItemSellingDetails, showPurchaseOrderDetails,
+                        showItemPricingAndReviewDetails, showOrderDetailsAndMoreAction, order=None,
+                        orderStatusList=None):
+    showItemImage = eval(showItemImage)
+    showSeller = eval(showSeller)
+    showItemSellingDetails = eval(showItemSellingDetails)
+    showPurchaseOrderDetails = eval(showPurchaseOrderDetails)
+    showItemPricingAndReviewDetails = eval(showItemPricingAndReviewDetails)
+    showOrderDetailsAndMoreAction = eval(showOrderDetailsAndMoreAction)
+
+    # if showItemSellingDetails and showPurchaseOrderDetails:
+    #     raise Exception('Cannot display both ItemSellingDetails and PurchaseOrderDetails.')
+    #
+    # if showItemPricingAndReviewDetails and showOrderDetailsAndMoreAction:
+    #     raise Exception('Cannot display both ItemPricingAndReviewDetails and OrderDetailsAndMoreAction.')
+
+    if showItemSellingDetails:
+        secondComponent = getItemSellingDetails(item, showSeller)
+    elif showPurchaseOrderDetails:
+        secondComponent = getPurchaseOrderDetails(order, orderStatusList)
+    else:
+        raise Exception('Both showItemSellingDetails and showItemSellingDetails cannot be False.')
+
+    if showItemPricingAndReviewDetails:
+        thirdComponent = getItemPricingAndReviewDetails(request, item)
+    elif showOrderDetailsAndMoreAction:
+        thirdComponent = getOrderDetailsAndMoreAction()
+    else:
+        raise Exception('Both ItemPricingAndReviewDetails and OrderDetailsAndMoreAction cannot be False.')
+
+    itemImage = f'''
+        <div class="mr-2 mb-3 mb-lg-0">
+            <img src="https://cdn-thumbs.imagevenue.com/09/85/ad/ME1573QH_t.jpg" width="150" height="150" alt="">
+        </div>
+    ''' if showItemImage else '<span></span>'
+
     itemContent = f'''
         <div class="card card-body mt-3">
             <div class="media align-items-center align-items-lg-start text-center text-lg-left flex-column flex-lg-row">
-                <div class="mr-2 mb-3 mb-lg-0">
-                    <img src="https://cdn-thumbs.imagevenue.com/09/85/ad/ME1573QH_t.jpg" width="150"
-                         height="150" alt="">
-                </div>
+                {itemImage}
                 <div class="media-body">
                     <h6 class="media-title font-weight-semibold">
-                        <a href="/item-view/1/" data-abc="true">{order.item.title}</a>
+                        <a href="{reverse('core:item-view', kwargs={'pk': item.pk})}" data-abc="true">{item.title}</a>
                     </h6>
-                    <ul class="list-inline list-inline-dotted mb-0">
-                        <li class="list-inline-item">Order date: {order.createdDttm.strftime('%d %h, %Y')}</li>
-                        &nbsp;&nbsp;&nbsp;
-                        <li class="list-inline-item">Order total: £{order.total}</li>
-                        &nbsp;&nbsp;&nbsp;
-                        <li class="list-inline-item">Order number: {order.number}</li>
-                    </ul>
-                    <ul class="list-inline list-inline-dotted mb-3 mb-lg-2">
-                        <li>Order status: {orderStatus.get_status_display()}</li>
-                        <li>Tracking number: {order.tracking if order.tracking else 'Not provided yet'}</li>
-                    </ul>
-                    <ul class="list-inline list-inline-dotted mb-0">
-                        <li class="list-inline-item">
-                            Sold by:
-                            <a href="/user/1/items"
-                               data-abc="true">{order.item.seller.get_short_name()}</a>
-                        </li>
-                    </ul>
+                    {secondComponent}
                 </div>
-                <div class="mt-3 mt-lg-0 ml-lg-3 text-center">
-                    <ul class="no-bullets" style="list-style-type: none; margin: 0; padding: 0;">
-                        <li>
-                            <a class="btn btn-primary mt-3" style="width: 100%;" href="/cart/?function=add&amp;id=1"
-                               role="button">View order details
-                            </a>
-                        </li>
-                        <li>
-                            <a class="btn btn-outline-primary mt-3" style="width: 100%;" href="{reverse('core:items-from-user-view', kwargs={'pk': order.item.seller.pk})}"
-                               role="button">View seller's other items
-                            </a>
-                        </li>
-                        <li>
-                            <div style="height: 15px"></div>
-                            <a class="btn btn-outline-primary dropdown-toggle" href="#" role="button" style="width: 100%;"
-                               id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true"
-                               aria-expanded="false">
-                                More actions
-                            </a>
-                            <div class="dropdown-menu" aria-labelledby="dropdownMenuLink"
-                                 style="width: 196px;">
-                                <a class="dropdown-item" href="#">Contact seller</a>
-                                <a class="dropdown-item" href="#">Return this item</a>
-                                <a class="dropdown-item" href="#">leave feedback</a>
-                                <a class="dropdown-item" href="#">I didn't receive it</a>
-                                <a class="dropdown-item" href="#">Add note</a>
-                                <a class="dropdown-item" href="#">Hide order</a>
-                            </div>
-                        </li>
-                    </ul>
-                </div>
+                {thirdComponent}
             </div>
         </div>
     '''
