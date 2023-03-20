@@ -1,5 +1,5 @@
 from django import template
-from django.db.models import Sum, Avg
+from django.db.models import Avg
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 
@@ -153,7 +153,7 @@ def itemCartButton(request, item):
         return mark_safe(
             f'''
             <a class="btn btn-outline-primary mt-3"
-                href="{reverse('core:cart-view')}?function=add&id={item.id}"
+                href="{reverse('core:cart-view')}?function=addToCart&id={item.id}"
                 role="button">
                     <i class="fas fa-cart-plus"></i> Add to cart
             </a>
@@ -196,7 +196,9 @@ def renderItemCatalogue(request, item, showSeller):
         </li>
         '''
 
-    averageRating = item.itemReview.aggregate(avg=Avg('rating')).get('avg')
+    averageRating = None
+    if item.itemReview.count() > 0:
+        averageRating = sum([i.rating for i in item.itemReview.all()]) / item.itemReview.count()
     rating = generateStarRatingFromFloat(averageRating) if averageRating else ''
 
     itemDelivery = f'''
@@ -314,107 +316,173 @@ def renderItemCatalogueWithOrderFurtherDetailsComponent(order, orderStatusList):
 
 
 @register.simple_tag
-def renderItemCartProductCatalogue(item):
+def renderItemCartProductCatalogue(request, item):
+    cart = request.session.get('cart', {})
     itemContent = f'''
-        <div class="card mb-3">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div class="d-flex flex-row align-items-center">
-                        <div>
-                            <img src="https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-shopping-carts/img1.webp"
-                                class="img-fluid rounded-3" alt="Shopping item"
-                                style="width: 65px;">
-                        </div>
-                        <div class="ms-3">
-                            <h5>{item.title}</h5>
-                            <p class="small mb-0">{f'{item.description[:70]}...' if len(item.description) > 70 else item.description}</p>
-                        </div>
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="d-flex justify-content-between">
+                <div class="d-flex flex-row align-items-center">
+                    <div>
+                        <img class="img-fluid rounded-3" alt="Shopping item" style="width: 65px;"
+                            src="https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-shopping-carts/img1.webp"/>
                     </div>
-                    <div class="d-flex flex-row align-items-center">
-                        <div style="width: 80px;">
-                            <h5 class="mb-0">£{item.price}</h5>
-                        </div>
-                        <a href="{reverse('core:cart-view')}?function=remove&id={item.id}" style="color: #cecece;">
-                            <i class="fas fa-trash-alt"></i></a>
+                    &nbsp;&nbsp;&nbsp;&nbsp;
+                    <div class="ms-3">
+                        <h5>{item.title}</h5>
+                        <p class="small mb-0">{f'{item.description[:70]}...' if len(item.description) > 70 else item.description}</p>
                     </div>
                 </div>
+                <div class="d-flex flex-row align-items-center">
+                    <div style="width: 20%;">
+                        <a class="btn btn-primary btn-sm" href="{reverse('core:cart-view')}?function=decreaseQuantity&id={item.id}" role="button">
+                            <i class="fa fa-minus"></i>
+                        </a>
+                    </a>
+                    </div>
+                    <div style="width: 20%;">
+                        <h5 class="fw-normal mb-0">{cart.get(str(item.id))}</h5>
+                    </div>
+                    <div style="width: 80px;">
+                        <a class="btn btn-primary btn-sm" href="{reverse('core:cart-view')}?function=increaseQuantity&id={item.id}" role="button">
+                            <i class="fa fa-plus"></i>
+                        </a>
+                    </div>
+                    <div style="width: 80px;">
+                        <h5 class="mb-0">£{item.price}</h5>
+                    </div>
+                    <a href="{reverse('core:cart-view')}?function=removeFromCart&id={item.id}" style="color: #cecece;">
+                        <i class="fas fa-trash-alt"></i>
+                    </a>
+                </div>
             </div>
+        </div>
+    </div>    
+    '''
+    return mark_safe(itemContent)
+
+
+def renderItemCartProductCatalogueList(request, itemList):
+    itemContent = f'''
+        <div class="col-lg-7">
+            <h5 class="mb-3">
+                <a href="#" class="text-body">
+                <i class="fas fa-long-arrow-alt-left me-2">&nbsp;</i>Continue shopping</a>
+            </h5>
+            <hr>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <p class="mb-0">You have {itemList.count()} item(s) in your cart</p>
+                </div>
+            </div>
+            {"".join([renderItemCartProductCatalogue(request, item) for item in itemList])}
         </div>
     '''
     return mark_safe(itemContent)
 
 
-@register.simple_tag
-def renderCardDetailsInputComponent(itemList):
-    totalPrice = '{:,.2f}'.format(itemList.aggregate(price=Sum('price')).get('price') if itemList.count() > 0 else 0)
+def renderCardDetailsInputComponent(request, itemList):
+    cart = request.session.get('cart', {})
+    subtotal = 0
+    delivery = 0
+    for item in itemList:
+        subtotal += item.price * cart.get(str(item.id))
+        delivery += item.deliveryCharge if item.deliveryCharge else 0
+
+    cards = ['amex', 'mastercard', 'paypal', 'stripe', 'visa']
+
+    def getCardComponent(card):
+        return f'''<a href="#" type="submit"><i class="fab fa-cc-{card} fa-2x me-2"></i></a>'''
+
     itemContent = f'''
-    <div class="card bg-light rounded-3">
-        <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h5 class="mb-0">Card details</h5>
-            </div>
-            <p class="small mb-2">Card type</p>
-            <a href="#" type="submit"><i class="fab fa-cc-mastercard fa-2x me-2"></i></a>
-            <a href="#" type="submit"><i class="fab fa-cc-visa fa-2x me-2"></i></a>
-            <a href="#" type="submit"><i class="fab fa-cc-amex fa-2x me-2"></i></a>
-            <a href="#" type="submit"><i class="fab fa-cc-paypal fa-2x"></i></a>
-            <form class="mt-4">
-                <div class="form-outline form-white mb-4">
-                    <input type="text" id="typeName"
-                           class="form-control form-control-lg" siez="17"
-                           placeholder="Cardholder's Name"/>
-                    <label class="form-label" for="typeName">Cardholder's Name</label>
+    <div class="col-lg-5">
+        <div class="card bg-light rounded-3">
+            <form class="card-body" method="post">
+                <input type="hidden" name="csrfmiddlewaretoken" value="{request.META.get('CSRF_COOKIE')}">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="mb-0">Card details</h5>
                 </div>
-                <div class="form-outline form-white mb-4">
-                    <input type="text" id="typeText"
-                           class="form-control form-control-lg" siez="17"
-                           placeholder="1234 5678 9012 3457" minlength="19"
-                           maxlength="19"/>
-                    <label class="form-label" for="typeText">Card Number</label>
-                </div>
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <div class="form-outline form-white">
-                            <input type="text" id="typeExp"
-                                   class="form-control form-control-lg"
-                                   placeholder="MM/YYYY" size="7" id="exp" minlength="7"
-                                   maxlength="7"/>
-                            <label class="form-label" for="typeExp">Expiration</label>
-                        </div>
+
+                <p class="small mb-2">Card type</p>
+                {'&nbsp;'.join([getCardComponent(card) for card in cards])}
+                <div class="mt-4">
+                    <div class="form-outline form-white mb-4">
+                        <input type="text" id="cardHolderName" class="form-control form-control-lg" size="17"
+                               placeholder="Cardholder's Name"/>
+                        <label class="form-label" for="cardHolderName">Cardholder's Name</label>
                     </div>
-                    <div class="col-md-6">
-                        <div class="form-outline form-white">
-                            <input type="password" id="typeText"
-                                   class="form-control form-control-lg"
-                                   placeholder="&#9679;&#9679;&#9679;" size="1"
-                                   minlength="3" maxlength="3"/>
-                            <label class="form-label" for="typeText">CVV</label>
+                    <div class="form-outline form-white mb-4">
+                        <input type="text" id="cardNumber" class="form-control form-control-lg" size="17"
+                               placeholder="1234 5678 9012 3457" minlength="16" maxlength="16"/>
+                        <label class="form-label" for="cardNumber">Card Number</label>
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="form-outline form-white">
+                                <input type="text" id="expireDate" class="form-control form-control-lg" size="7"
+                                       placeholder="MM/YYYY" id="exp" minlength="7" maxlength="7"/>
+                                <label class="form-label" for="expireDate">Expiration</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-outline form-white">
+                                <input type="password" id="cvv" class="form-control form-control-lg" size="1"
+                                       placeholder="{3 * '&#9679;'}" minlength="3" maxlength="3"/>
+                                <label class="form-label" for="cvv">CVV</label>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </form>
-            <hr class="my-4">
-            <div class="d-flex justify-content-between">
-                <p class="mb-2">Subtotal</p>
-                <p class="mb-2">£{totalPrice}</p>
-            </div>
-            <div class="d-flex justify-content-between">
-                <p class="mb-2">Shipping</p>
-                <p class="mb-2">£0.00</p>
-            </div>
-            <div class="d-flex justify-content-between mb-4">
-                <p class="mb-2">Total(Incl. taxes)</p>
-                <p class="mb-2">£{totalPrice}</p>
-            </div>
-            <button type="submit" class="btn btn-info btn-block btn-lg">
+
+                <hr class="my-4">
+
                 <div class="d-flex justify-content-between">
-                    <span>£{totalPrice}</span>
-                    <span>Checkout <i
-                            class="fas fa-long-arrow-alt-right ms-2"></i></span>
+                    <p class="mb-2">Subtotal</p>
+                    <p class="mb-2">£{subtotal}</p>
                 </div>
-            </button>
+
+                <div class="d-flex justify-content-between">
+                    <p class="mb-2">Shipping</p>
+                    <p class="mb-2">£{delivery}</p>
+                </div>
+
+                <div class="d-flex justify-content-between mb-4">
+                    <p class="mb-2">Total(Incl. taxes)</p>
+                    <p class="mb-2">£{subtotal + delivery}</p>
+                </div>
+
+                <button type="submit" class="btn btn-dark btn-block btn-lg">
+                    <div class="d-flex justify-content-between">
+                        <span>£{subtotal + delivery}</span>
+                        <span>Checkout <i class="fas fa-long-arrow-alt-right ms-2"></i></span>
+                    </div>
+                </button>
+            </div>
         </div>
     </div>
+    '''
+    return mark_safe(itemContent)
+
+
+@register.simple_tag
+def renderCartViewTemplate(request, itemList):
+    itemContent = f'''
+    <section class="h-100 h-custom">
+        <div class="container py-5 h-100">
+            <div class="row d-flex justify-content-center align-items-center h-100">
+                <div class="col">
+                    <div class="card">
+                        <div class="card-body p-4">
+                            <div class="row">
+                                {renderItemCartProductCatalogueList(request, itemList)}
+                                {renderCardDetailsInputComponent(request, itemList)}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
     '''
     return mark_safe(itemContent)
 

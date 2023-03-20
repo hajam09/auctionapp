@@ -14,7 +14,7 @@ from django.utils.encoding import DjangoUnicodeDecodeError, force_str
 from django.utils.http import urlsafe_base64_decode
 
 from core.forms import LoginForm, RegistrationForm, ItemForm
-from core.models import Item, Bid, Image, OrderStatus
+from core.models import Item, Bid, Image, OrderStatus, Order
 from core.utils import emailOperations, generalOperations
 
 
@@ -287,46 +287,62 @@ def itemsFromUser(request, pk):
 def cartView(request):
     userCart = request.session.get('cart', {})
 
-    # userCart = request.session.get('cart')
-    # itemId = int(request.GET.get('id')) if request.GET.get('id') is not None else None
-    # if userCart is None or userCart == [] and not request.GET.get('function'):
-    #     request.session['cart'] = []
-    #     return redirect('core:index-view')
-    #
-    # if request.method == 'POST':
-    #     purchaseItems = Item.objects.filter(id__in=userCart)
-    #     orderList = []
-    #     orderStatusList = []
-    #     for item in purchaseItems:
-    #         order = Order(total=item.deliveryCharge or 0 + item.price, item=item, quantity=1)
-    #         orderStatus = OrderStatus(status=OrderStatus.Status.ORDERED, order=order)
-    #
-    #         orderList.append(order)
-    #         orderStatusList.append(orderStatus)
-    #
-    #     Order.objects.bulk_create(orderList)
-    #     OrderStatus.objects.bulk_create(orderStatusList)
-    #
-    #     purchaseItems.update(buyer_id=request.user.id)
-    #     request.session['cart'] = []
-    #     messages.success(
-    #         request, 'Order is complete!'
-    #     )
-    #     return redirect('core:index-view')
-    #
-    # if request.GET.get('function') == 'add' and itemId not in userCart:
-    #     userCart.append(itemId)
-    # elif request.GET.get('function') == 'remove' and itemId in userCart:
-    #     userCart.remove(itemId)
-    #
-    # request.session['cart'] = userCart
-    #
-    # previousUrl = request.META.get('HTTP_REFERER')
-    # if previousUrl and request.GET.get('function'):
-    #     return redirect(previousUrl)
-    #
-    # items = Item.objects.filter(id__in=userCart)
-    # context = {
-    #     'itemList': items
-    # }
-    return render(request, 'core/cartView.html')
+    if request.method == 'POST':
+        items = Item.objects.filter(id__in=userCart.keys())
+        orderList = []
+        orderStatusList = []
+
+        for item in items:
+            # total = price * quantity + delivery
+            total = item.price * userCart.get(str(item.id)) + item.deliveryCharge if item.deliveryCharge else 0
+            order = Order(total=total, item=item, quantity=userCart.get(str(item.id)), )
+            orderStatus = OrderStatus(status=OrderStatus.Status.ORDERED, order=order)
+            orderList.append(order)
+            orderStatusList.append(orderStatus)
+
+        Order.objects.bulk_create(orderList)
+        OrderStatus.objects.bulk_create(orderStatusList)
+        items.update(buyer_id=request.user.id)
+        request.session['cart'] = []
+        messages.success(
+            request, 'Order is complete!'
+        )
+        return redirect('core:index-view')
+
+    if request.GET.get('function') == 'removeFromCart':
+        userCart.pop(request.GET.get('id'), None)
+
+    elif request.GET.get('function') == 'addToCart':
+        quantity = request.GET.get('quantity', 1)
+        userCart[request.GET.get('id')] = int(quantity)
+
+    elif request.GET.get('function') == 'increaseQuantity':
+        currentStock = Item.objects.get(id=request.GET.get('id')).stock
+        currentQuantity = userCart.get(request.GET.get('id'))
+
+        if currentQuantity + 1 > currentStock:
+            messages.warning(
+                request, 'Not enough stock!'
+            )
+        else:
+            userCart[request.GET.get('id')] += 1
+
+    elif request.GET.get('function') == 'decreaseQuantity':
+        currentQuantity = userCart.get(request.GET.get('id'))
+
+        if currentQuantity - 1 == 0:
+            userCart.pop(request.GET.get('id'), None)
+        else:
+            userCart[request.GET.get('id')] -= 1
+
+    request.session['cart'] = userCart
+
+    previousUrl = request.META.get('HTTP_REFERER')
+    if previousUrl and request.GET.get('function'):
+        return redirect(previousUrl)
+
+    items = Item.objects.filter(id__in=userCart.keys())
+    context = {
+        'itemList': items
+    }
+    return render(request, 'core/cartView.html', context)
