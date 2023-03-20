@@ -3,7 +3,7 @@ from django.db.models import Avg
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 
-from core.models import Item, Bid, Image
+from core.models import Item, Bid, Image, Order
 from core.utils.navigationBar import Icon, linkItem
 
 register = template.Library()
@@ -234,7 +234,7 @@ def getPurchaseOrderDetails(order, orderStatusList):
     return mark_safe(itemContent)
 
 
-def getItemPricingAndReviewDetails(request, item):
+def getItemPricingAndReviewDetails(request, item: Item):
     averageRating = None
     if item.itemReview.count() > 0:
         averageRating = sum([i.rating for i in item.itemReview.all()]) / item.itemReview.count()
@@ -258,8 +258,47 @@ def getItemPricingAndReviewDetails(request, item):
     return mark_safe(itemContent)
 
 
-def getOrderDetailsAndMoreAction():
+def itemReviewModal(request, order: Order):
     itemContent = f'''
+        <div class="modal fade" id="item-review-modal-{order.id}" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <form class="modal-content" method="post">
+                    <input type="hidden" name="csrfmiddlewaretoken" value="{request.META.get('CSRF_COOKIE')}">
+                    <input type="hidden" name="item-id" value="{order.item.id}">
+                    <input type="hidden" name="order-number" value="{order.number}">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Review for order #{order.number}</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <input class="form-control" type="text" name="summary" placeholder="Summary" required>
+                        <br>
+                        <textarea class="form-control" name="description" rows="3" placeholder="Description" required></textarea>
+                        <br>
+                        <select class="form-control" name="rating" required>
+                              <option value="1">1</option>
+                              <option value="2">2</option>
+                              <option value="3">3</option>
+                              <option value="4">4</option>
+                              <option value="5">5</option>
+                            </select>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Submit Review</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    '''
+    return itemContent
+
+
+def getOrderDetailsAndMoreAction(request, order: Order):
+    itemContent = f'''
+        {itemReviewModal(request, order)}
         <div class="text-center" style="margin-top: -15px;">
             <ul class="no-bullets" style="list-style-type: none; margin: 0; padding: 0;">
                 <li>
@@ -283,7 +322,7 @@ def getOrderDetailsAndMoreAction():
                          style="width: 196px;">
                         <a class="dropdown-item" href="#">Contact seller</a>
                         <a class="dropdown-item" href="#">Return this item</a>
-                        <a class="dropdown-item" href="#">leave feedback</a>
+                        <a class="dropdown-item" data-toggle="modal" data-target="#item-review-modal-{order.id}">leave feedback</a>
                         <a class="dropdown-item" href="#">I didn't receive it</a>
                         <a class="dropdown-item" href="#">Add note</a>
                         <a class="dropdown-item" href="#">Hide order</a>
@@ -322,7 +361,7 @@ def renderItemCatalogue(request, item, showItemImage, showSeller, showItemSellin
     if showItemPricingAndReviewDetails:
         thirdComponent = getItemPricingAndReviewDetails(request, item)
     elif showOrderDetailsAndMoreAction:
-        thirdComponent = getOrderDetailsAndMoreAction()
+        thirdComponent = getOrderDetailsAndMoreAction(request, order)
     else:
         raise Exception('Both ItemPricingAndReviewDetails and OrderDetailsAndMoreAction cannot be False.')
 

@@ -14,7 +14,7 @@ from django.utils.encoding import DjangoUnicodeDecodeError, force_str
 from django.utils.http import urlsafe_base64_decode
 
 from core.forms import LoginForm, RegistrationForm, ItemForm
-from core.models import Item, Bid, Image, OrderStatus, Order
+from core.models import Item, Bid, Image, OrderStatus, Order, Review
 from core.utils import emailOperations, generalOperations
 
 
@@ -191,7 +191,20 @@ def userListings(request):
 @login_required
 def userPurchases(request):
     # TODO: View order details
-    # TODO: More actions: Contact seller | Return this item | Leave feedback | I didn't receive it | Add note
+    # TODO: More actions: Contact seller | Return this item | I didn't receive it | Add note
+
+    if request.method == 'POST':
+        Review.objects.create(
+            item_id=request.POST.get('item-id'),
+            summary=request.POST.get('summary'),
+            description=request.POST.get('description'),
+            rating=request.POST.get('rating'),
+        )
+        messages.success(
+            request,
+            f'Your review has been added for order #{request.POST.get("order-number")}'
+        )
+        return redirect('core:user-purchases')
 
     filterList = [
         reduce(
@@ -233,8 +246,6 @@ def itemBids(request, pk):
 
 
 def itemView(request, pk):
-    # TODO: Move components to template tag
-    # TODO: Allow user to add price for auction
     # TODO: Show related products
     try:
         item = Item.objects.get(id=pk)
@@ -302,7 +313,7 @@ def cartView(request):
         Order.objects.bulk_create(orderList)
         OrderStatus.objects.bulk_create(orderStatusList)
         items.update(buyer_id=request.user.id)
-        request.session['cart'] = []
+        request.session['cart'] = {}
         messages.success(
             request, 'Order is complete!'
         )
