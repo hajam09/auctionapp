@@ -30,7 +30,7 @@ def navigationPanel(request):
         links.extend(
             [
                 linkItem('Account', '', None, [
-                    linkItem('My listings', reverse('core:user-listings'), Icon('', 'fas fa-sign-out-alt', '15')),
+                    linkItem('My listings', reverse('core:user-listings'), Icon('', 'fas fa-th-list', '15')),
                     linkItem('My purchases', reverse('core:user-purchases'), Icon('', 'fas fa-sign-out-alt', '15')),
                     linkItem('My Bidding\'s', reverse('core:user-bids'), Icon('', 'fas fa-sign-out-alt', '15')),
                     None,
@@ -83,6 +83,19 @@ def renderNavigationPanelComponent(panel):
         </li>
         '''
 
+    return mark_safe(itemContent)
+
+
+@register.simple_tag
+def cookieBanner():
+    itemContent = f'''
+        <div class="alert text-center cookiealert p-3 mb-2 bg-dark text-white" role="alert">
+            <b>Do you like cookies?</b>
+            &#x1F36A; We use cookies to ensure you get the best experience on our website.
+            <a href="https://cookiesandyou.com/" target="_blank">Learn more</a>
+            <button type="button" class="btn btn-primary btn-sm acceptcookies">I agree</button>
+        </div>
+    '''
     return mark_safe(itemContent)
 
 
@@ -307,7 +320,7 @@ def getOrderDetailsAndMoreAction(request, order: Order):
                     </a>
                 </li>
                 <li>
-                    <a class="btn btn-outline-primary mt-3" style="width: 100%;" href="#"
+                    <a class="btn btn-outline-primary mt-3" style="width: 100%;" href="{reverse('core:items-from-user-view', kwargs={'pk': order.item.seller.pk})}"
                        role="button">View seller's other items
                     </a>
                 </li>
