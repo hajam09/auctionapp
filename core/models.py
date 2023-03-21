@@ -95,3 +95,9 @@ class Review(BaseModel):
     summary = models.CharField(max_length=1024)
     description = models.TextField(blank=True, null=True)
     rating = models.PositiveSmallIntegerField()
+
+
+class Note(BaseModel):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='orderNotes')
+    summary = models.CharField(max_length=1024)
+    description = models.TextField(blank=True, null=True)

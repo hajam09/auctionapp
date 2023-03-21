@@ -271,6 +271,37 @@ def getItemPricingAndReviewDetails(request, item: Item):
     return mark_safe(itemContent)
 
 
+def itemNoteModal(request, order: Order):
+    itemContent = f'''
+        <div class="modal fade" id="order-note-modal-{order.id}" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <form class="modal-content" method="post">
+                    <input type="hidden" name="csrfmiddlewaretoken" value="{request.META.get('CSRF_COOKIE')}">
+                    <input type="hidden" name="ADD_NOTE_FOR_ORDER">
+                    <input type="hidden" name="order-id" value="{order.id}">
+                    <input type="hidden" name="order-number" value="{order.number}">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add note for order #{order.number}</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <input class="form-control" type="text" name="summary" placeholder="Summary" required>
+                        <br>
+                        <textarea class="form-control" name="description" rows="3" placeholder="Description" required></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Add Note</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        '''
+    return itemContent
+
+
 def itemReviewModal(request, order: Order):
     itemContent = f'''
         <div class="modal fade" id="item-review-modal-{order.id}" tabindex="-1" role="dialog" aria-hidden="true">
@@ -278,6 +309,7 @@ def itemReviewModal(request, order: Order):
                 <form class="modal-content" method="post">
                     <input type="hidden" name="csrfmiddlewaretoken" value="{request.META.get('CSRF_COOKIE')}">
                     <input type="hidden" name="item-id" value="{order.item.id}">
+                    <input type="hidden" name="ADD_REVIEW_FOR_ORDER">
                     <input type="hidden" name="order-number" value="{order.number}">
                     <div class="modal-header">
                         <h5 class="modal-title">Review for order #{order.number}</h5>
@@ -311,6 +343,7 @@ def itemReviewModal(request, order: Order):
 
 def getOrderDetailsAndMoreAction(request, order: Order):
     itemContent = f'''
+        {itemNoteModal(request, order)}
         {itemReviewModal(request, order)}
         <div class="text-center" style="margin-top: -15px;">
             <ul class="no-bullets" style="list-style-type: none; margin: 0; padding: 0;">
@@ -337,7 +370,7 @@ def getOrderDetailsAndMoreAction(request, order: Order):
                         <a class="dropdown-item" href="#">Return this item</a>
                         <a class="dropdown-item" data-toggle="modal" data-target="#item-review-modal-{order.id}">leave feedback</a>
                         <a class="dropdown-item" href="#">I didn't receive it</a>
-                        <a class="dropdown-item" href="#">Add note</a>
+                        <a class="dropdown-item" data-toggle="modal" data-target="#order-note-modal-{order.id}">Add note</a>
                         <a class="dropdown-item" href="#">Hide order</a>
                     </div>
                 </li>

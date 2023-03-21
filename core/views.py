@@ -14,7 +14,7 @@ from django.utils.encoding import DjangoUnicodeDecodeError, force_str
 from django.utils.http import urlsafe_base64_decode
 
 from core.forms import LoginForm, RegistrationForm, ItemForm
-from core.models import Item, Bid, Image, OrderStatus, Order, Review
+from core.models import Item, Bid, Image, OrderStatus, Order, Review, Note
 from core.utils import emailOperations, generalOperations
 
 
@@ -193,7 +193,7 @@ def userPurchases(request):
     # TODO: View order details
     # TODO: More actions: Contact seller | Return this item | I didn't receive it | Add note
 
-    if request.method == 'POST':
+    if request.method == 'POST' and 'ADD_REVIEW_FOR_ORDER' in request.POST:
         Review.objects.create(
             item_id=request.POST.get('item-id'),
             summary=request.POST.get('summary'),
@@ -203,6 +203,18 @@ def userPurchases(request):
         messages.success(
             request,
             f'Your review has been added for order #{request.POST.get("order-number")}'
+        )
+        return redirect('core:user-purchases')
+
+    elif request.method == 'POST' and 'ADD_NOTE_FOR_ORDER' in request.POST:
+        Note.objects.create(
+            order_id=request.POST.get('order-id'),
+            summary=request.POST.get('summary'),
+            description=request.POST.get('description')
+        )
+        messages.success(
+            request,
+            f'Note added successfully for order #{request.POST.get("order-number")}'
         )
         return redirect('core:user-purchases')
 
