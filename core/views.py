@@ -21,8 +21,7 @@ from core.utils import emailOperations, generalOperations
 def index(request):
     # expiredItems = Item.objects.filter(Q(expireDate__isnull=False), Q(expireDate__gte=timezone.now()))
     context = {
-        'itemList': generalOperations.performComplexItemSearch(request.GET.get('query')).prefetch_related(
-            'itemReview').select_related('seller')
+        'itemList': generalOperations.performComplexItemSearch(request.GET.get('query')).select_related('seller')
     }
     return render(request, 'core/index.html', context)
 
@@ -181,9 +180,9 @@ def userListings(request):
         )
     ]
 
-    itemList = generalOperations.performComplexItemSearch(request.GET.get('query'), filterList).select_related('buyer')
     context = {
-        'itemList': itemList
+        'itemList': generalOperations.performComplexItemSearch(request.GET.get('query'), filterList).prefetch_related(
+            'itemOrders')
     }
     return render(request, 'core/userListings.html', context)
 
@@ -191,11 +190,11 @@ def userListings(request):
 @login_required
 def userPurchases(request):
     # TODO: View order details
-    # TODO: More actions: Contact seller | Return this item | I didn't receive it | Add note
+    # TODO: More actions: CONTACT_SELLER | RETURN_THIS_ITEM | ADD_REVIEW_FOR_ORDER | DIDNT_RECEIVE_IT | ADD_NOTE
 
     if request.method == 'POST' and 'ADD_REVIEW_FOR_ORDER' in request.POST:
         Review.objects.create(
-            item_id=request.POST.get('item-id'),
+            order_id=request.POST.get('order-id'),
             summary=request.POST.get('summary'),
             description=request.POST.get('description'),
             rating=request.POST.get('rating'),
@@ -220,7 +219,7 @@ def userPurchases(request):
 
     filterList = [
         reduce(
-            operator.and_, [Q(**{'item__buyer_id': request.user.id})]
+            operator.and_, [Q(**{'buyer_id': request.user.id})]
         )
     ]
     orderList = generalOperations.performComplexOrderSearch(request.GET.get('query'), filterList).select_related(
@@ -242,9 +241,13 @@ def userBids(request):
     bids = Bid.objects.filter(bidder=request.user).values_list('item_id', 'item__price', 'item__type').annotate(
         Max('price')
     )
+    latestPriceForEachBids = Bid.objects.filter(
+        item_id__in=bids.values_list('item_id', flat=True)
+    ).select_related('item').order_by('item', '-createdDttm').distinct('item')
 
     context = {
-        'bids': bids
+        'bids': bids,
+        'latestPriceForEachBids': latestPriceForEachBids,
     }
     return render(request, 'core/userBids.html', context)
 
@@ -299,8 +302,8 @@ def itemsFromUser(request, pk):
         )
     ]
     context = {
-        'itemList': generalOperations.performComplexItemSearch(request.GET.get('query'), filterList).prefetch_related(
-            'itemReview').select_related('seller')
+        'itemList': generalOperations.performComplexItemSearch(request.GET.get('query'), filterList).select_related(
+            'seller')
     }
     return render(request, 'core/itemsFromUser.html', context)
 
@@ -316,15 +319,15 @@ def cartView(request):
 
         for item in items:
             # total = price * quantity + delivery
-            total = item.price * userCart.get(str(item.id)) + item.deliveryCharge if item.deliveryCharge else 0
-            order = Order(total=total, item=item, quantity=userCart.get(str(item.id)), )
+            total = item.price * userCart.get(str(item.id))
+            total += item.deliveryCharge if item.deliveryCharge else 0
+            order = Order(item=item, buyer=request.user, total=total, quantity=userCart.get(str(item.id)))
             orderStatus = OrderStatus(status=OrderStatus.Status.ORDERED, order=order)
             orderList.append(order)
             orderStatusList.append(orderStatus)
 
         Order.objects.bulk_create(orderList)
         OrderStatus.objects.bulk_create(orderStatusList)
-        items.update(buyer_id=request.user.id)
         request.session['cart'] = {}
         messages.success(
             request, 'Order is complete!'

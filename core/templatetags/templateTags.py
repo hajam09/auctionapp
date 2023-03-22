@@ -3,7 +3,7 @@ from django.db.models import Avg
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 
-from core.models import Item, Bid, Image, Order
+from core.models import Item, Bid, Image, Order, Review
 from core.utils.navigationBar import Icon, linkItem
 
 register = template.Library()
@@ -97,17 +97,6 @@ def cookieBanner():
         </div>
     '''
     return mark_safe(itemContent)
-
-
-@register.filter
-def itemStatus(item):
-    if item.buyer is not None:
-        return "SOLD"
-    elif item.type == Item.Type.AUCTION and item.buyer is not None and item.isExpired():
-        return "SOLD"
-    elif item.type == Item.Type.AUCTION and item.buyer is None and item.isExpired():
-        "NOT SOLD"
-    return "LISTED"
 
 
 @register.filter
@@ -247,15 +236,16 @@ def getPurchaseOrderDetails(order, orderStatusList):
     return mark_safe(itemContent)
 
 
-def getItemPricingAndReviewDetails(request, item: Item):
+def getItemPricingAndReviewDetails(request, item: Item, reviewList):
     averageRating = None
-    if item.itemReview.count() > 0:
-        averageRating = sum([i.rating for i in item.itemReview.all()]) / item.itemReview.count()
+    itemReviews = [i for i in reviewList if i.order.item == item]
+    if len(itemReviews) > 0:
+        averageRating = sum([i.rating for i in itemReviews]) / len(itemReviews)
     rating = generateStarRatingFromFloat(averageRating) if averageRating else '<div style="height: 20px;"></div>'
 
     itemDelivery = f'''
         <p class="text-secondary" style="margin-bottom: -5px;">£{item.deliveryCharge} postage</p>
-    ''' if item.deliveryCharge else f'<p class="text-success">Free shipping</p>'
+    ''' if item.deliveryCharge else f'<p class="text-success" style="margin-bottom: -5px;">Free shipping</p>'
 
     itemContent = f'''
         <div class="mt-3 mt-lg-0 ml-lg-3 text-center">
@@ -263,7 +253,7 @@ def getItemPricingAndReviewDetails(request, item: Item):
             <div>
                 {rating}
             </div>
-            <div class="text-muted">{item.itemReview.count()} reviews</div>
+            <div class="text-muted">{len(itemReviews)} reviews</div>
             <div class="text-muted">{itemDelivery}</div>
             {itemCartButton(request, item)}
         </div>
@@ -308,7 +298,7 @@ def itemReviewModal(request, order: Order):
             <div class="modal-dialog modal-lg">
                 <form class="modal-content" method="post">
                     <input type="hidden" name="csrfmiddlewaretoken" value="{request.META.get('CSRF_COOKIE')}">
-                    <input type="hidden" name="item-id" value="{order.item.id}">
+                    <input type="hidden" name="order-id" value="{order.id}">
                     <input type="hidden" name="ADD_REVIEW_FOR_ORDER">
                     <input type="hidden" name="order-number" value="{order.number}">
                     <div class="modal-header">
@@ -383,7 +373,7 @@ def getOrderDetailsAndMoreAction(request, order: Order):
 @register.simple_tag
 def renderItemCatalogue(request, item, showItemImage, showSeller, showItemSellingDetails, showPurchaseOrderDetails,
                         showItemPricingAndReviewDetails, showOrderDetailsAndMoreAction, order=None,
-                        orderStatusList=None):
+                        orderStatusList=None, reviewList=None):
     showItemImage = eval(showItemImage)
     showSeller = eval(showSeller)
     showItemSellingDetails = eval(showItemSellingDetails)
@@ -405,7 +395,7 @@ def renderItemCatalogue(request, item, showItemImage, showSeller, showItemSellin
         raise Exception('Both showItemSellingDetails and showItemSellingDetails cannot be False.')
 
     if showItemPricingAndReviewDetails:
-        thirdComponent = getItemPricingAndReviewDetails(request, item)
+        thirdComponent = getItemPricingAndReviewDetails(request, item, reviewList=reviewList)
     elif showOrderDetailsAndMoreAction:
         thirdComponent = getOrderDetailsAndMoreAction(request, order)
     else:
@@ -573,12 +563,30 @@ def renderCardDetailsInputComponent(request, itemList):
                 <button type="submit" class="btn btn-dark btn-block btn-lg">
                     <div class="d-flex justify-content-between">
                         <span>£{subtotal + delivery}</span>
-                        <span>Checkout <i class="fas fa-long-arrow-alt-right ms-2"></i></span>
+                        <span>Checkout&nbsp;&nbsp;<i class="fas fa-long-arrow-alt-right ms-2"></i></span>
                     </div>
                 </button>
             </div>
         </div>
     </div>
+    '''
+    return mark_safe(itemContent)
+
+
+@register.simple_tag
+def renderIndexViewTemplate(request, itemList):
+    reviewList = Review.objects.filter(order__item_id__in=itemList).select_related('order__item__seller')
+    itemContent = f'''
+    {''.join([renderItemCatalogue(request, item, 'True', 'True', 'True', 'False', 'True', 'False', reviewList=reviewList) for item in itemList])}
+    '''
+    return mark_safe(itemContent)
+
+
+@register.simple_tag
+def renderItemsFromUserViewTemplate(request, itemList):
+    reviewList = Review.objects.filter(order__item_id__in=itemList).select_related('order__item__seller')
+    itemContent = f'''
+    {''.join([renderItemCatalogue(request, item, 'True', 'False', 'True', 'False', 'True', 'False', reviewList=reviewList) for item in itemList])}
     '''
     return mark_safe(itemContent)
 
@@ -604,6 +612,19 @@ def renderCartViewTemplate(request, itemList):
     </section>
     '''
     return mark_safe(itemContent)
+
+
+@register.filter
+def itemStatus(item):
+    if item.type == Item.Type.AUCTION and item.isExpired() and item.itemOrders.count() == 0:
+        return 'NOT SOLD'
+    elif item.type == Item.Type.AUCTION and item.isExpired() and item.itemOrders.count() != 0:
+        return 'SOLD'
+    elif item.type == Item.Type.BUY_IT_NOW and item.stock == 0:
+        return 'OUT OF STOCK'
+    elif item.type == Item.Type.BUY_IT_NOW and item.stock > 0:
+        return 'LISTED'
+    raise Exception(f'Unknown status type found for item with id: {item.id}')
 
 
 @register.simple_tag
@@ -648,7 +669,8 @@ def renderItemImage(item, image):
 
 
 @register.simple_tag
-def renderUserBidsTable(bid):
+def renderUserBidsTable(bid, latestPriceForEachBids):
+    currentBidPrice = next((lpb for lpb in latestPriceForEachBids if lpb.item.id == bid[0]), None)
     viewBiddingButton = '<span></span>'
     if bid[2] == Item.Type.AUCTION:
         viewBiddingButton = f'''
@@ -659,7 +681,7 @@ def renderUserBidsTable(bid):
         <tr>
             <th scope="row">{bid[0]}</th>
             <td>£{bid[3]}</td>
-            <td>{bid[1]}</td>
+            <td>£{currentBidPrice.price}</td>
             <td>{userBidStatus(bid)}</td>
             <td>
                 <a class="btn btn-outline-primary btn-sm" href="{reverse('core:item-view', kwargs={'pk': bid[0]})}"
@@ -699,7 +721,7 @@ def getItemAuctionComponent(currentPrice):
                 Bid amount:
             </div>
             <div class="col" style="padding-left: 0;">
-                <input class="form-control" type="number" name="bidAmount" min={currentPrice} step=".1" style="max-width: 18%;">
+                <input class="form-control" type="number" name="bidAmount" min={currentPrice} step=".1" style="max-width: 18%;" required>
             </div>
             <div class="col" style="margin-left: -360px;padding-top: 4px;">
                 <button type="submit" class="btn btn-outline-primary btn-sm">
@@ -742,7 +764,7 @@ def renderItemViewComponent(request, item):
         '''
         counter += 1
 
-    averageRating = item.itemReview.aggregate(avg=Avg('rating')).get('avg')
+    averageRating = Review.objects.filter(order__item=item).aggregate(avg=Avg('rating')).get('avg')
     rating = generateStarRatingFromFloat(averageRating) if averageRating else 'No ratings yet.'
 
     itemContent = f'''

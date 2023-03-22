@@ -6,6 +6,10 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 
+def generateOrderNumber():
+    return random.randint(1000000000, 9999999999)
+
+
 class BaseModel(models.Model):
     createdDttm = models.DateTimeField(default=timezone.now)
     modifiedDttm = models.DateTimeField(auto_now=True)
@@ -30,8 +34,7 @@ class Item(BaseModel):
         SELLER_REFURBISHED = 'SELLER_REFURBISHED', _('Seller refurbished')
         FOR_PARTS_OR_NOT_WORKING = 'FOR_PARTS_OR_NOT_WORKING', _('For parts or not working')
 
-    seller = models.ForeignKey(User, blank=True, null=True, on_delete=models.SET_NULL, related_name='sellerItems')
-    buyer = models.ForeignKey(User, blank=True, null=True, on_delete=models.SET_NULL, related_name='buyerItems')
+    seller = models.ForeignKey(User, on_delete=models.DO_NOTHING, related_name='sellerItems')
     title = models.CharField(max_length=1024)
     description = models.TextField(blank=True, null=True)
     expireDate = models.DateTimeField(blank=True, null=True)
@@ -49,24 +52,21 @@ class Item(BaseModel):
 
 
 class Image(BaseModel):
-    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='itemImage')
-    image = models.ImageField(blank=True, null=True, upload_to='uploads/%Y/%m/%d')
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='itemImages')
+    image = models.ImageField(upload_to='uploads/%Y/%m/%d')
 
 
 class Bid(BaseModel):
-    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='itemBid')
-    bidder = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bidder')
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='itemBids')
+    bidder = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bidderBids')
     price = models.DecimalField(max_digits=9, decimal_places=2)
 
 
-def generateOrderNumber():
-    return random.randint(1000000000, 9999999999)
-
-
 class Order(BaseModel):
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='itemOrders')
+    buyer = models.ForeignKey(User, on_delete=models.DO_NOTHING, related_name='buyerOrders')
     total = models.DecimalField(max_digits=9, decimal_places=2)
     number = models.CharField(max_length=16, unique=True, default=generateOrderNumber)
-    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='itemOrder')
     quantity = models.PositiveSmallIntegerField()
     tracking = models.CharField(blank=True, null=True, max_length=64)
 
@@ -91,13 +91,18 @@ class OrderStatus(BaseModel):
 
 
 class Review(BaseModel):
-    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='itemReview')
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='orderReviews')
     summary = models.CharField(max_length=1024)
-    description = models.TextField(blank=True, null=True)
+    description = models.TextField()
     rating = models.PositiveSmallIntegerField()
 
 
 class Note(BaseModel):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='orderNotes')
     summary = models.CharField(max_length=1024)
-    description = models.TextField(blank=True, null=True)
+    description = models.TextField()
+
+
+class Communication(BaseModel):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='orderCommunications')
+    message = models.TextField()

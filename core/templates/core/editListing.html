@@ -15,7 +15,7 @@
             <br>
             {% csrf_token %}
             {{ form|crispy }}
-            {% for image in item.itemImage.all %}
+            {% for image in item.itemImages.all %}
                 {% renderItemImage item image %}
             {% endfor %}
             <br>
