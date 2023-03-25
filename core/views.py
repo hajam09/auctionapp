@@ -7,6 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.cache import cache
+from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.db.models import Q, Max
 from django.http import Http404
 from django.shortcuts import redirect, render
@@ -20,8 +21,20 @@ from core.utils import emailOperations, generalOperations
 
 def index(request):
     # expiredItems = Item.objects.filter(Q(expireDate__isnull=False), Q(expireDate__gte=timezone.now()))
+    items = generalOperations.performComplexItemSearch(request.GET.get('query')).select_related('seller')
+
+    paginator = Paginator(items, 15)
+    page = request.GET.get('page')
+
+    try:
+        itemPaginated = paginator.page(page)
+    except PageNotAnInteger:
+        itemPaginated = paginator.page(1)
+    except EmptyPage:
+        itemPaginated = paginator.page(paginator.num_pages)
+
     context = {
-        'itemList': generalOperations.performComplexItemSearch(request.GET.get('query')).select_related('seller')
+        'itemList': itemPaginated
     }
     return render(request, 'core/index.html', context)
 
@@ -238,7 +251,7 @@ def userPurchases(request):
 
 @login_required
 def userBids(request):
-    bids = Bid.objects.filter(bidder=request.user).values_list('item_id', 'item__price', 'item__type').annotate(
+    bids = Bid.objects.filter(bidder=request.user).values_list('item_id', 'item__type').annotate(
         Max('price')
     )
     latestPriceForEachBids = Bid.objects.filter(
@@ -319,6 +332,7 @@ def cartView(request):
 
         for item in items:
             # total = price * quantity + delivery
+            item.stock -= userCart.get(str(item.id))
             total = item.price * userCart.get(str(item.id))
             total += item.deliveryCharge if item.deliveryCharge else 0
             order = Order(item=item, buyer=request.user, total=total, quantity=userCart.get(str(item.id)))
@@ -326,6 +340,7 @@ def cartView(request):
             orderList.append(order)
             orderStatusList.append(orderStatus)
 
+        Item.objects.bulk_update(items, ['stock'])
         Order.objects.bulk_create(orderList)
         OrderStatus.objects.bulk_create(orderStatusList)
         request.session['cart'] = {}

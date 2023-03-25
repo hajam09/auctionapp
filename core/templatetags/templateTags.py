@@ -100,8 +100,8 @@ def cookieBanner():
 
 
 @register.filter
-def userBidStatus(bid):
-    if bid[1] > bid[3]:
+def userBidStatus(bid, currentBidPrice):
+    if bid[2] < currentBidPrice.price:
         return "You've been outbid!"
     return "You are the highest bidder!"
 
@@ -135,7 +135,8 @@ def itemCartButton(request, item):
     if request.user == item.seller:
         return mark_safe(
             f'''
-            <a class="btn btn-outline-dark mt-3" href="{reverse('core:edit-listing', kwargs={'pk': item.pk})}" role="button" style="margin-bottom: -25px;">
+            <a class="btn btn-outline-dark mt-3" href="{reverse('core:edit-listing', kwargs={'pk': item.pk})}"
+                role="button" style="margin-bottom: -25px;">
                 <i class="fas fa-edit"></i>
                 Edit item
             </a>
@@ -151,7 +152,17 @@ def itemCartButton(request, item):
             </a>
             '''
         )
-    elif item.type == Item.Type.BUY_IT_NOW and item.id not in userCart:
+    elif item.type == Item.Type.BUY_IT_NOW and str(item.id) in userCart:
+        return mark_safe(
+            f'''
+            <a class="btn btn-outline-primary mt-3"
+                href="{reverse('core:cart-view')}?function=removeFromCart&id={item.id}"
+                role="button">
+                    <i class="fas fa-cart-plus"></i> Remove from cart
+            </a>
+            '''
+        )
+    elif item.type == Item.Type.BUY_IT_NOW and str(item.id) not in userCart:
         return mark_safe(
             f'''
             <a class="btn btn-outline-primary mt-3"
@@ -672,7 +683,7 @@ def renderItemImage(item, image):
 def renderUserBidsTable(bid, latestPriceForEachBids):
     currentBidPrice = next((lpb for lpb in latestPriceForEachBids if lpb.item.id == bid[0]), None)
     viewBiddingButton = '<span></span>'
-    if bid[2] == Item.Type.AUCTION:
+    if bid[1] == Item.Type.AUCTION:
         viewBiddingButton = f'''
         <a class="btn btn-outline-secondary btn-sm" href="{reverse('core:item-bids', kwargs={'pk': bid[0]})}" role="button">View Bidding's</a>
         '''
@@ -680,9 +691,9 @@ def renderUserBidsTable(bid, latestPriceForEachBids):
     itemContent = f'''
         <tr>
             <th scope="row">{bid[0]}</th>
-            <td>£{bid[3]}</td>
+            <td>£{bid[2]}</td>
             <td>£{currentBidPrice.price}</td>
-            <td>{userBidStatus(bid)}</td>
+            <td>{userBidStatus(bid, currentBidPrice)}</td>
             <td>
                 <a class="btn btn-outline-primary btn-sm" href="{reverse('core:item-view', kwargs={'pk': bid[0]})}"
                    role="button">View</a>
@@ -763,9 +774,26 @@ def renderItemViewComponent(request, item):
         </div>
         '''
         counter += 1
+    else:
+        images = f'''
+        <div class="carousel-item active">
+            <img class="d-block w-100" src="https://dummyimage.com/500x500" alt="img">
+        </div>
+        '''
 
     averageRating = Review.objects.filter(order__item=item).aggregate(avg=Avg('rating')).get('avg')
     rating = generateStarRatingFromFloat(averageRating) if averageRating else 'No ratings yet.'
+
+    quantityOrBidComponent = f'''
+        <div class="card bg-light">
+            <div class="card-body">
+                <form method="post">
+                    <input type="hidden" name="csrfmiddlewaretoken" value="{request.META.get('CSRF_COOKIE')}">
+                    {getItemQuantityComponent(item.stock) if item.type == Item.Type.BUY_IT_NOW else getItemAuctionComponent(currentPrice)}
+                </form>
+            </div>
+        </div>
+    ''' if item.stock > 0 else '<span></span>'
 
     itemContent = f'''
     <div class="container-fluid p-3" style="max-width: 1500px;">
@@ -800,7 +828,7 @@ def renderItemViewComponent(request, item):
                     {itemPrice}
 
                     <dd class="col-sm-2">Stock:</dd>
-                    <dd class="col-sm-10">{item.stock} available</dd>
+                    <dd class="col-sm-10">{f'{item.stock} available' if item.stock > 0 else 'Out of stock.'}</dd>
 
                     <dd class="col-sm-2">Postage:</dd>
                     <dd class="col-sm-10">{'£' + str(item.deliveryCharge) if item.deliveryCharge else 'Free postage'}</dd>
@@ -808,15 +836,78 @@ def renderItemViewComponent(request, item):
                     <dd class="col-sm-2">Returns:</dd>
                     <dd class="col-sm-10">TODO</dd>
                 </dl>
-                <div class="card bg-light">
-                    <div class="card-body">
-                        <form method="post">
-                            <input type="hidden" name="csrfmiddlewaretoken" value="{request.META.get('CSRF_COOKIE')}">
-                            {getItemQuantityComponent(item.stock) if item.type == Item.Type.BUY_IT_NOW else getItemAuctionComponent(currentPrice)}
-                        </form>
-                    </div>
-                </div>
+                {quantityOrBidComponent}
             </div>
+        </div>
+    </div>
+    '''
+    return mark_safe(itemContent)
+
+
+def similarProductCarousel():
+    itemContent = f'''
+    '''
+    return mark_safe(itemContent)
+
+
+@register.simple_tag
+def paginationComponent(request, objects):
+    if not objects.has_other_pages():
+        return mark_safe('<span></span>')
+
+    query = f"&query={request.GET.get('query')}" if request.GET.get('query') else ''
+
+    if objects.has_previous():
+        href = f'?page={objects.previous_page_number()}{query}'
+        previousPageLink = f'''
+        <li class="page-item">
+            <a class="page-link" href="{href}" tabindex="-1">Previous</a>
+        </li>
+        '''
+    else:
+        previousPageLink = f'''
+        <li class="page-item disabled">
+            <a class="page-link" href="#" tabindex="-1">Previous</a>
+        </li>
+        '''
+
+    if objects.has_next():
+        href = f'?page={objects.next_page_number()}{query}'
+        nextPageLink = f'''
+        <li class="page-item">
+            <a class="page-link" href="{href}" tabindex="-1">Next</a>
+        </li>
+        '''
+    else:
+        nextPageLink = f'''
+        <li class="page-item disabled">
+            <a class="page-link" href="#" tabindex="-1">Next</a>
+        </li>
+        '''
+
+    pageNumberLinks = ''
+
+    for pageNumber in objects.paginator.page_range:
+        if objects.number == pageNumber:
+            pageNumberLinks += f'''
+                <li class="page-item active"><a class="page-link" href="#">{pageNumber}</a></li>
+            '''
+        else:
+            href = f"?page={pageNumber}{query}"
+            pageNumberLinks += f'''
+                <li class="page-item"><a class="page-link" href="{href}">{pageNumber}</a></li>
+            '''
+
+    itemContent = f'''
+    <div class="row">
+        <div class="col-md-12" style="width: 1100px;">
+            <nav aria-label="Page navigation example">
+                <ul class="pagination justify-content-center">
+                    {previousPageLink}
+                    {pageNumberLinks}
+                    {nextPageLink}
+                </ul>
+            </nav>
         </div>
     </div>
     '''
