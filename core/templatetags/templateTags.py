@@ -1,9 +1,11 @@
 from django import template
-from django.db.models import Avg
+from django.core.paginator import Paginator
+from django.db.models import Avg, Q
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 
 from core.models import Item, Bid, Image, Order, Review
+from core.utils import generalOperations
 from core.utils.navigationBar import Icon, linkItem
 
 register = template.Library()
@@ -642,24 +644,30 @@ def itemStatus(item):
 def renderUserListingTable(item):
     viewBiddingButton = '<span></span>'
     if item.type == Item.Type.AUCTION:
-        viewBiddingButton = f'''<a class="btn btn-outline-secondary btn-sm" href="{reverse('core:item-bids', kwargs={'pk': item.pk})}" role="button">View Bidding's</a>'''''
+        viewBiddingButton = f'''
+            <a class="btn btn-outline-info btn-sm" href="{reverse('core:item-bids', kwargs={'pk': item.pk})}"
+               data-toggle="tooltip" data-placement="top" title="View listing bids"
+               role="button"><i class="fa fa-gavel" aria-hidden="true"></i></a>
+        '''
 
     itemContent = f'''
         <tr>
             <th scope="row">{item.id}</th>
-            <td>{item.title}</td>
+            <td><a href="{reverse('core:item-view', kwargs={'pk': item.pk})}">{item.title}</a></td>
             <td>
-            <span class="badge badge-{'primary' if item.type == Item.Type.BUY_IT_NOW else 'secondary'}">{item.get_type_display()}</span>
+                <span class="badge badge-{'primary' if item.type == Item.Type.BUY_IT_NOW else 'secondary'}">
+                    {item.get_type_display()}
+                </span>
             </td>
             <td>£{item.price}</td>
             <td>{itemStatus(item)}</td>
             <td>
-                <a class="btn btn-outline-primary btn-sm" href="{reverse('core:item-view', kwargs={'pk': item.pk})}"
-                   role="button">View</a>
                 <a class="btn btn-outline-dark btn-sm" href="{reverse('core:edit-listing', kwargs={'pk': item.pk})}"
-                   role="button">Edit</a>
+                   data-toggle="tooltip" data-placement="top" title="Edit listing"
+                   role="button"><i class="fa fa-edit"></i></a>
                 <a class="btn btn-outline-danger btn-sm" href="{reverse('core:user-listings')}?function=delete&item={item.pk}"
-                   role="button">Delete</a>
+                   data-toggle="tooltip" data-placement="top" title="Delete listing"
+                   role="button"><i class='far fa-trash-alt'></i></a>
                    {viewBiddingButton}
             </td>
         </tr>
@@ -844,8 +852,89 @@ def renderItemViewComponent(request, item):
     return mark_safe(itemContent)
 
 
-def similarProductCarousel():
+def getSimilarProductInstanceComponent(item: Item, columnSize: int):
     itemContent = f'''
+    <div class="col-sm-{columnSize}">
+        <div class="thumb-wrapper">
+            <div class="img-box">
+                <img src="https://dummyimage.com/500x500" class="img-fluid" alt="">
+            </div>
+            <div class="thumb-content">
+                <h4>{item.title}</h4>
+                <p class="item-price"><strike>$400.00</strike> <span>$369.00</span></p>
+                <div class="star-rating">
+                    <ul class="list-inline">
+                        <li class="list-inline-item"><i class="fa fa-star"></i></li>
+                        <li class="list-inline-item"><i class="fa fa-star"></i></li>
+                        <li class="list-inline-item"><i class="fa fa-star"></i></li>
+                        <li class="list-inline-item"><i class="fa fa-star"></i></li>
+                        <li class="list-inline-item"><i class="fa fa-star-o"></i></li>
+                    </ul>
+                </div>
+                <a href="#" class="btn btn-primary btn-sm">Add to Cart</a>
+            </div>
+        </div>
+    </div>
+    '''
+    return mark_safe(itemContent)
+
+
+@register.simple_tag
+def similarProductCarousel(item):
+    ITEMS_PER_CAROUSEL = 4
+    NUMBER_OF_CAROUSEL = 4
+
+    items = generalOperations.performComplexItemSearch(
+        f'{item.title}'
+    ).filter(~Q(id=item.id))[:ITEMS_PER_CAROUSEL * NUMBER_OF_CAROUSEL]
+    paginator = Paginator(items, ITEMS_PER_CAROUSEL)
+    carouselItems = ''
+    carouselIndicators = ''
+    # TODO: Optimise query here. More NUMBER_OF_CAROUSEL means higher query search.
+
+    for pageNumber in paginator.page_range:
+        currentPage = paginator.page(pageNumber)
+        containerSize = 12 // ITEMS_PER_CAROUSEL
+        isActive = 'active' if pageNumber == 1 else ''
+        classActive = 'class="active"' if isActive else ''
+
+        carouselItems += f'''
+        <div class="carousel-item {isActive}">
+            <div class="row">
+                {''.join([getSimilarProductInstanceComponent(item, containerSize) for item in currentPage.object_list])}
+            </div>
+        </div>
+        '''
+
+        carouselIndicators += f'''
+            <li data-target="#myCarousel" data-slide-to="{pageNumber}" {classActive}></li>
+        '''
+
+    itemContent = f'''
+    <div class="container-fluid p-3" style="max-width: 1500px;">
+        <div class="row">
+            <div class="col-md-12">
+                <h2>Similar Products</h2>
+                <div id="myCarousel" class="carousel slide" data-ride="carousel" data-interval="0">
+                    <!-- Carousel indicators -->
+                    <ol class="carousel-indicators">
+                        {carouselIndicators}
+                    </ol>
+                    <!-- Wrapper for carousel items -->
+                    <div class="carousel-inner">
+                        {carouselItems}
+                    </div>
+                    <!-- Carousel controls -->
+                    <a class="carousel-control-prev" href="#myCarousel" data-slide="prev">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                    <a class="carousel-control-next" href="#myCarousel" data-slide="next">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
     '''
     return mark_safe(itemContent)
 
@@ -886,8 +975,21 @@ def paginationComponent(request, objects):
         '''
 
     pageNumberLinks = ''
+    EITHER_SIDE_PAGE_LIMIT = 20
+    pageRange = objects.paginator.page_range
+    if pageRange.stop > EITHER_SIDE_PAGE_LIMIT:
+        currentPage = int(request.GET.get('page', 1))
+        minRange = currentPage - EITHER_SIDE_PAGE_LIMIT // 2
+        maxRange = currentPage + EITHER_SIDE_PAGE_LIMIT // 2
 
-    for pageNumber in objects.paginator.page_range:
+        if minRange <= 0:
+            minRange = 1
+        if maxRange > pageRange.stop:
+            maxRange = pageRange.stop
+
+        pageRange = range(minRange, maxRange)
+
+    for pageNumber in pageRange:
         if objects.number == pageNumber:
             pageNumberLinks += f'''
                 <li class="page-item active"><a class="page-link" href="#">{pageNumber}</a></li>

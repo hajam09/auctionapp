@@ -11,5 +11,7 @@
                 {% renderItemsFromUserViewTemplate request itemList %}
             </div>
         </div>
+        <br>
+        {% paginationComponent request itemList %}
     </div>
 {% endblock %}

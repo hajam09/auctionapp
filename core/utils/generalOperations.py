@@ -22,10 +22,19 @@ def isPasswordStrong(password):
     return True
 
 
+def calculateTotalPriceForOrder(item: Item, orderedQuantity, failSilently=False):
+    # total = price * quantity + delivery
+    if item.stock < orderedQuantity and failSilently:
+        return None
+    if item.stock < orderedQuantity:
+        raise Exception(f'Not enough stock for item id: {item.id}')
+    return item.price * orderedQuantity + item.deliveryCharge if item.deliveryCharge else 0
+
+
 def performComplexItemSearch(query, filterList=None):
     filterList = filterList or []
     filterList.append(reduce(operator.or_, [Q(**{'deleteFl': False})]))
-    attributesToSearch = ['title', 'description', 'condition']
+    attributesToSearch = ['id', 'title', 'description', 'condition']
     filterList = filterListQuerySet(attributesToSearch, filterList, query)
     return Item.objects.filter(reduce(operator.and_, filterList)).distinct()
 

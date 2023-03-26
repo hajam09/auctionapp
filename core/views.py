@@ -193,9 +193,21 @@ def userListings(request):
         )
     ]
 
+    items = generalOperations.performComplexItemSearch(request.GET.get('query'), filterList).prefetch_related(
+        'itemOrders'
+    )
+    paginator = Paginator(items, 15)
+    page = request.GET.get('page')
+
+    try:
+        itemPaginated = paginator.page(page)
+    except PageNotAnInteger:
+        itemPaginated = paginator.page(1)
+    except EmptyPage:
+        itemPaginated = paginator.page(paginator.num_pages)
+
     context = {
-        'itemList': generalOperations.performComplexItemSearch(request.GET.get('query'), filterList).prefetch_related(
-            'itemOrders')
+        'itemList': itemPaginated
     }
     return render(request, 'core/userListings.html', context)
 
@@ -238,12 +250,23 @@ def userPurchases(request):
     orderList = generalOperations.performComplexOrderSearch(request.GET.get('query'), filterList).select_related(
         'item__seller'
     )
+
+    paginator = Paginator(orderList, 20)
+    page = request.GET.get('page')
+
+    try:
+        orderListPaginated = paginator.page(page)
+    except PageNotAnInteger:
+        orderListPaginated = paginator.page(1)
+    except EmptyPage:
+        orderListPaginated = paginator.page(paginator.num_pages)
+
     orderStatusList = OrderStatus.objects.filter(
-        order_id__in=orderList.values_list('id', flat=True)
+        order_id__in=orderListPaginated.object_list.values_list('id', flat=True)
     ).select_related('order').order_by('order', '-createdDttm').distinct('order')
 
     context = {
-        'orderList': orderList,
+        'orderList': orderListPaginated,
         'orderStatusList': orderStatusList
     }
     return render(request, 'core/userPurchases.html', context)
@@ -254,12 +277,23 @@ def userBids(request):
     bids = Bid.objects.filter(bidder=request.user).values_list('item_id', 'item__type').annotate(
         Max('price')
     )
+
+    paginator = Paginator(bids, 15)
+    page = request.GET.get('page')
+
+    try:
+        bidsPaginated = paginator.page(page)
+    except PageNotAnInteger:
+        bidsPaginated = paginator.page(1)
+    except EmptyPage:
+        bidsPaginated = paginator.page(paginator.num_pages)
+
     latestPriceForEachBids = Bid.objects.filter(
-        item_id__in=bids.values_list('item_id', flat=True)
+        item_id__in=bidsPaginated.object_list.values_list('item_id', flat=True)
     ).select_related('item').order_by('item', '-createdDttm').distinct('item')
 
     context = {
-        'bids': bids,
+        'bids': bidsPaginated,
         'latestPriceForEachBids': latestPriceForEachBids,
     }
     return render(request, 'core/userBids.html', context)
@@ -314,9 +348,20 @@ def itemsFromUser(request, pk):
             operator.and_, [Q(**{'seller_id': pk})]
         )
     ]
+
+    items = generalOperations.performComplexItemSearch(request.GET.get('query'), filterList).select_related('seller')
+    paginator = Paginator(items, 15)
+    page = request.GET.get('page')
+
+    try:
+        itemPaginated = paginator.page(page)
+    except PageNotAnInteger:
+        itemPaginated = paginator.page(1)
+    except EmptyPage:
+        itemPaginated = paginator.page(paginator.num_pages)
+
     context = {
-        'itemList': generalOperations.performComplexItemSearch(request.GET.get('query'), filterList).select_related(
-            'seller')
+        'itemList': itemPaginated
     }
     return render(request, 'core/itemsFromUser.html', context)
 
@@ -332,10 +377,10 @@ def cartView(request):
 
         for item in items:
             # total = price * quantity + delivery
-            item.stock -= userCart.get(str(item.id))
-            total = item.price * userCart.get(str(item.id))
-            total += item.deliveryCharge if item.deliveryCharge else 0
-            order = Order(item=item, buyer=request.user, total=total, quantity=userCart.get(str(item.id)))
+            orderedQuantity = userCart.get(str(item.id))
+            total = generalOperations.calculateTotalPriceForOrder(item, orderedQuantity)
+            item.stock -= orderedQuantity
+            order = Order(item=item, buyer=request.user, total=total, quantity=orderedQuantity)
             orderStatus = OrderStatus(status=OrderStatus.Status.ORDERED, order=order)
             orderList.append(order)
             orderStatusList.append(orderStatus)
