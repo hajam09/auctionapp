@@ -22,6 +22,22 @@ class BaseModel(models.Model):
         abstract = True
 
 
+class Address(BaseModel):
+    class Country(models.TextChoices):
+        GB = 'GB', _('United Kingdom')
+
+    user = models.OneToOneField(User, on_delete=models.DO_NOTHING, related_name='address')
+    addressLine1 = models.CharField(max_length=32)
+    addressLine2 = models.CharField(max_length=32)
+    town = models.CharField(max_length=32)
+    county = models.CharField(max_length=32)
+    postcode = models.CharField(max_length=32)
+    country = models.CharField(max_length=32, choices=Country.choices, default=Country.GB)
+
+    class Meta:
+        abstract = True
+
+
 class Item(BaseModel):
     class Type(models.TextChoices):
         BUY_IT_NOW = 'BUY_IT_NOW', _('Buy It Now')

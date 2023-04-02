@@ -1,0 +1,92 @@
+#deliverInfoProgressBar {
+    margin-bottom: 3vh;
+    overflow: hidden;
+    padding-left: 0px;
+    /*margin-top: 3vh*/
+}
+
+#deliverInfoProgressBar li {
+    list-style-type: none;
+    font-size: 0.8rem;
+    width: 25%;
+    float: left;
+    position: relative;
+    font-weight: 400;
+}
+
+#deliverInfoProgressBar #step1:before {
+    content: "";
+    width: 20px;
+    height: 20px;
+    margin-left: 0px !important;
+}
+
+#deliverInfoProgressBar #step2:before {
+    content: "";
+    color: #fff;
+    width: 20px;
+    height: 20px;
+    margin-left: 32%;
+}
+
+#deliverInfoProgressBar #step3:before {
+    content: "";
+    color: #fff;
+    width: 20px;
+    height: 20px;
+    margin-right: 32%;
+}
+
+#deliverInfoProgressBar #step4:before {
+    content: "";
+    color: rgb(151, 149, 149, 0.651);
+    width: 20px;
+    height: 20px;
+    margin-right: 0px !important;
+}
+
+#deliverInfoProgressBar li:before {
+    line-height: 29px;
+    display: block;
+    font-size: 12px;
+    background: rgb(151, 149, 149);
+    border-radius: 50%;
+    margin: auto;
+    z-index: -1;
+
+}
+
+#deliverInfoProgressBar li:after {
+    content: '';
+    height: 3px;
+    background: rgb(151, 149, 149, 0.651);
+    position: absolute;
+    left: 0%;
+    right: 0%;
+    margin-bottom: 2vh;
+    top: 8px;
+    z-index: 1;
+}
+
+#deliverInfoProgressBar li:nth-child(2):after {
+    margin-right: auto;
+}
+
+#deliverInfoProgressBar li:nth-child(1):after {
+    margin: auto;
+}
+
+#deliverInfoProgressBar li:nth-child(3):after {
+    float: left;
+    width: 68%;
+}
+
+#deliverInfoProgressBar li:nth-child(4):after {
+    margin-left: auto;
+    width: 132%;
+}
+
+#deliverInfoProgressBar li.active:before,
+#deliverInfoProgressBar li.active:after {
+    background: #007bff !important;
+}

@@ -344,6 +344,18 @@ def itemReviewModal(request, order: Order):
     return itemContent
 
 
+def getMoreActionsDropdownContent(order: Order):
+    itemContent = f'''
+    <a class="dropdown-item" href="#">Contact seller</a>
+    <a class="dropdown-item" href="#">Return this item</a>
+    <a class="dropdown-item" data-toggle="modal" data-target="#item-review-modal-{order.id}">leave feedback</a>
+    <a class="dropdown-item" href="#">I didn't receive it</a>
+    <a class="dropdown-item" data-toggle="modal" data-target="#order-note-modal-{order.id}">Add note</a>
+    <a class="dropdown-item" href="#">Hide order</a>
+    '''
+    return mark_safe(itemContent)
+
+
 def getOrderDetailsAndMoreAction(request, order: Order):
     itemContent = f'''
         {itemNoteModal(request, order)}
@@ -351,7 +363,7 @@ def getOrderDetailsAndMoreAction(request, order: Order):
         <div class="text-center" style="margin-top: -15px;">
             <ul class="no-bullets" style="list-style-type: none; margin: 0; padding: 0;">
                 <li>
-                    <a class="btn btn-primary mt-3" style="width: 100%;" href="/cart/?function=add&amp;id=1"
+                    <a class="btn btn-primary mt-3" style="width: 100%;" href="{reverse('core:order-detail-view', kwargs={'pk': order.pk})}"
                        role="button">View order details
                     </a>
                 </li>
@@ -369,12 +381,7 @@ def getOrderDetailsAndMoreAction(request, order: Order):
                     </a>
                     <div class="dropdown-menu" aria-labelledby="dropdownMenuLink"
                          style="width: 196px;">
-                        <a class="dropdown-item" href="#">Contact seller</a>
-                        <a class="dropdown-item" href="#">Return this item</a>
-                        <a class="dropdown-item" data-toggle="modal" data-target="#item-review-modal-{order.id}">leave feedback</a>
-                        <a class="dropdown-item" href="#">I didn't receive it</a>
-                        <a class="dropdown-item" data-toggle="modal" data-target="#order-note-modal-{order.id}">Add note</a>
-                        <a class="dropdown-item" href="#">Hide order</a>
+                        {getMoreActionsDropdownContent(order)}
                     </div>
                 </li>
             </ul>
@@ -748,6 +755,108 @@ def getItemAuctionComponent(currentPrice):
                 </button>
             </div>
         </div>
+    '''
+    return mark_safe(itemContent)
+
+
+@register.simple_tag
+def renderOrderDetailViewComponent(request, order):
+    if order.item.type == Item.Type.BUY_IT_NOW:
+        itemPrice = order.item.price
+    else:
+        latestBid = Bid.objects.filter(item=order.item).last()
+        itemPrice = latestBid.price if latestBid else order.item.price
+
+    itemContent = f'''
+        {itemNoteModal(request, order)}
+        {itemReviewModal(request, order)}
+        <h2>Order detail</h2>
+        <div class="row" style="width: 1100px;">
+            <div class="col-9">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-3">
+                                <h5>Order info</h5>
+                            </div>
+                            <div class="col-9">
+                                <dl class="row">
+                                    <dd class="col-sm-3">Time Placed</dd>
+                                    <dd class="col-sm-9">{order.createdDttm.strftime('%B %d, %Y %H:%M:%S')}</dd>
+
+                                    <dd class="col-sm-3">Order number</dd>
+                                    <dd class="col-sm-9">{order.number}</dd>
+
+                                    <dd class="col-sm-3">Total</dd>
+                                    <dd class="col-sm-9">£{order.total}</dd>
+
+                                    <dd class="col-sm-3">Sold by</dd>
+                                    <dd class="col-sm-9">{order.item.seller.get_full_name()}</dd>
+                                </dl>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-3">
+                                <h6>Delivery info</h6>
+                            </div>
+                            <div class="col-9">
+                                <div class="progress-track">
+                                    <ul id="deliverInfoProgressBar">
+                                        <li class="step0 active" id="step1">Ordered - 22 Mar</li>
+                                        <li class="step0 active text-center" id="step2">Processing</li>
+                                        <li class="step0 active text-right" id="step3"><span
+                                                id="three">Dispatched</span></li>
+                                        <li class="step0 text-right" id="step4">Delivered</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-3">
+                                <h6>Item details</h6>
+                                <img class="d-block w-100" src="https://dummyimage.com/500x500" alt="img">
+                            </div>
+                            <div class="col-9" style="padding-top: 20px;">
+                                <dl class="row">
+                                    <dd class="col-sm-12">{order.item.title}</dd>
+
+                                    <dd class="col-sm-4">Price</dd>
+                                    <dd class="col-sm-8">£{itemPrice}</dd>
+
+                                    <dd class="col-sm-4">Item number</dd>
+                                    <dd class="col-sm-8">{order.item.id}</dd>
+
+                                    <dd class="col-sm-4">Returns accepted</dd>
+                                    <dd class="col-sm-8">through 24 Apr 2023.</dd>
+
+                                    <br><br>
+                                    <dd class="col-sm-4">
+                                        <a href="#" class="btn btn-primary btn-sm active dropdown-toggle" role="button"
+                                            id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true"
+                                            aria-expanded="false">More actions</a>
+                                        <div class="dropdown-menu" aria-labelledby="dropdownMenuLink"
+                                             style="width: 196px;">
+                                            {getMoreActionsDropdownContent(order)}
+                                        </div>
+                                    </dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-3 w-100">
+                <h4>Delivery address</h4>
+                <p style="margin-bottom:0;">Full name</p>
+                <p style="margin-bottom:0;">Address line 1</p>
+                <p style="margin-bottom:0;">Address line 2</p>
+                <p style="margin-bottom:0;">Town</p>
+                <p style="margin-bottom:0;">County</p>
+                <p style="margin-bottom:0;">Postcode</p>
+                <p style="margin-bottom:0;">Country</p>
+            </div>
+        </div>
+        <br>
     '''
     return mark_safe(itemContent)
 

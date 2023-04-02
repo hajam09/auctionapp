@@ -366,6 +366,18 @@ def itemsFromUser(request, pk):
     return render(request, 'core/itemsFromUser.html', context)
 
 
+def orderDetailView(request, pk):
+    try:
+        order = Order.objects.select_related('item__seller').get(id=pk, item__seller=request.user)
+    except Order.DoesNotExist:
+        raise Http404
+
+    context = {
+        'order': order
+    }
+    return render(request, 'core/orderDetailView.html', context)
+
+
 @login_required
 def cartView(request):
     userCart = request.session.get('cart', {})

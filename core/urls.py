@@ -17,6 +17,7 @@ urlpatterns = [
     path('user-bids/', views.userBids, name='user-bids'),
     path('item-bids/<int:pk>/', views.itemBids, name='item-bids'),
     path('item-view/<int:pk>/', views.itemView, name='item-view'),
+    path('order-detail/<int:pk>/', views.orderDetailView, name='order-detail-view'),
     path('user/<int:pk>/items', views.itemsFromUser, name='items-from-user-view'),
     path('cart/', views.cartView, name='cart-view'),
 ]
