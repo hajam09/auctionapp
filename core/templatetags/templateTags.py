@@ -862,6 +862,38 @@ def renderOrderDetailViewComponent(request, order):
 
 
 @register.simple_tag
+def renderOrderNotes(request, order):
+    notes = ''
+    for note in Note.objects.filter(order=order):
+        description = note.description.replace("\n", "<br>")
+        notes += f'''
+        <div class="card">
+            <div class="card-header">
+                {note.summary}
+                <button type="button" class="btn btn-secondary btn-sm float-right" style="margin-left: 10px;">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button type="button" class="btn btn-danger btn-sm float-right">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </div>
+            <div class="card-body">
+                <blockquote class="blockquote mb-0">
+                    <small>{description}</small>
+                </blockquote>
+            </div>
+        </div>
+        <br>
+        '''
+
+    itemContent = f'''
+    <h4>Order notes</h2>
+    {notes}
+    '''
+    return mark_safe(itemContent)
+
+
+@register.simple_tag
 def renderItemViewComponent(request, item):
     if item.type == Item.Type.BUY_IT_NOW:
         itemPrice = f'''
