@@ -372,6 +372,31 @@ def orderDetailView(request, pk):
     except Order.DoesNotExist:
         raise Http404
 
+    if request.method == 'POST' and 'ADD_REVIEW_FOR_ORDER' in request.POST:
+        Review.objects.create(
+            order_id=request.POST.get('order-id'),
+            summary=request.POST.get('summary'),
+            description=request.POST.get('description'),
+            rating=request.POST.get('rating'),
+        )
+        messages.success(
+            request,
+            f'Your review has been added for order #{request.POST.get("order-number")}'
+        )
+        return redirect('core:order-detail-view', pk=pk)
+
+    elif request.method == 'POST' and 'ADD_NOTE_FOR_ORDER' in request.POST:
+        Note.objects.create(
+            order_id=request.POST.get('order-id'),
+            summary=request.POST.get('summary'),
+            description=request.POST.get('description')
+        )
+        messages.success(
+            request,
+            f'Note added successfully for order #{request.POST.get("order-number")}'
+        )
+        return redirect('core:order-detail-view', pk=pk)
+
     context = {
         'order': order
     }

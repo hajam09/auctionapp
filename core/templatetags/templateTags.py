@@ -4,7 +4,7 @@ from django.db.models import Avg, Q
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 
-from core.models import Item, Bid, Image, Order, Review
+from core.models import Item, Bid, Image, Order, Review, OrderStatus, Note
 from core.utils import generalOperations
 from core.utils.navigationBar import Icon, linkItem
 
@@ -32,9 +32,10 @@ def navigationPanel(request):
         links.extend(
             [
                 linkItem('Account', '', None, [
+                    linkItem('My profile', None, Icon('', 'fa fa-user', '15')),
                     linkItem('My listings', reverse('core:user-listings'), Icon('', 'fas fa-th-list', '15')),
-                    linkItem('My purchases', reverse('core:user-purchases'), Icon('', 'fas fa-sign-out-alt', '15')),
-                    linkItem('My Bidding\'s', reverse('core:user-bids'), Icon('', 'fas fa-sign-out-alt', '15')),
+                    linkItem('My purchases', reverse('core:user-purchases'), Icon('', 'fa fa-shopping-bag', '15')),
+                    linkItem('My Bidding\'s', reverse('core:user-bids'), Icon('', 'fa fa-gavel', '15')),
                     None,
                     linkItem('Logout', reverse('core:logout'), Icon('', 'fas fa-sign-out-alt', '15')),
                 ]),
@@ -423,7 +424,7 @@ def renderItemCatalogue(request, item, showItemImage, showSeller, showItemSellin
 
     itemImage = f'''
         <div class="mr-2 mb-3 mb-lg-0">
-            <img src="https://cdn-thumbs.imagevenue.com/09/85/ad/ME1573QH_t.jpg" width="150" height="150" alt="">
+            <img class="d-block w-100" src="https://dummyimage.com/150x150" width="150" height="150" alt="img">
         </div>
     ''' if showItemImage else '<span></span>'
 
@@ -761,11 +762,24 @@ def getItemAuctionComponent(currentPrice):
 
 @register.simple_tag
 def renderOrderDetailViewComponent(request, order):
+    # TODO: Create Note object from this component
+    # TODO: Display delivery status
+    # TODO: Display returns
+    # TODO: Display delivery address
     if order.item.type == Item.Type.BUY_IT_NOW:
         itemPrice = order.item.price
     else:
         latestBid = Bid.objects.filter(item=order.item).last()
         itemPrice = latestBid.price if latestBid else order.item.price
+
+    deliveryInfoStatus = OrderStatus.objects.filter(
+        order=order, status__in=[
+            OrderStatus.Status.ORDERED,
+            OrderStatus.Status.PROCESSING,
+            OrderStatus.Status.DISPATCHED,
+            OrderStatus.Status.DELIVERED
+        ]
+    ).order_by('createdDttm')
 
     itemContent = f'''
         {itemNoteModal(request, order)}
@@ -857,6 +871,38 @@ def renderOrderDetailViewComponent(request, order):
             </div>
         </div>
         <br>
+    '''
+    return mark_safe(itemContent)
+
+
+@register.simple_tag
+def renderOrderNotes(request, order):
+    notes = ''
+    for note in Note.objects.filter(order=order):
+        description = note.description.replace("\n", "<br>")
+        notes += f'''
+        <div class="card">
+            <div class="card-header">
+                {note.summary}
+                <button type="button" class="btn btn-secondary btn-sm float-right" style="margin-left: 10px;">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button type="button" class="btn btn-danger btn-sm float-right">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </div>
+            <div class="card-body">
+                <blockquote class="blockquote mb-0">
+                    <small>{description}</small>
+                </blockquote>
+            </div>
+        </div>
+        <br>
+        '''
+
+    itemContent = f'''
+    <h4>Order notes</h2>
+    {notes}
     '''
     return mark_safe(itemContent)
 
@@ -1087,7 +1133,7 @@ def paginationComponent(request, objects):
     EITHER_SIDE_PAGE_LIMIT = 20
     pageRange = objects.paginator.page_range
     if pageRange.stop > EITHER_SIDE_PAGE_LIMIT:
-        currentPage = int(request.GET.get('page', 1))
+        currentPage = int(request.GET.get('page') or 1)
         minRange = currentPage - EITHER_SIDE_PAGE_LIMIT // 2
         maxRange = currentPage + EITHER_SIDE_PAGE_LIMIT // 2
 
