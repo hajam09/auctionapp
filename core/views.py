@@ -11,11 +11,12 @@ from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.db.models import Q, Max
 from django.http import Http404
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils.encoding import DjangoUnicodeDecodeError, force_str
 from django.utils.http import urlsafe_base64_decode
 
 from core.forms import LoginForm, RegistrationForm, ItemForm
-from core.models import Item, Bid, Image, OrderStatus, Order, Review, Note
+from core.models import Item, Bid, Image, OrderStatus, Order, Review, Note, Address
 from core.utils import emailOperations, generalOperations
 
 
@@ -128,6 +129,49 @@ def logout(request):
         return redirect(previousUrl)
 
     return redirect('core:index-view')
+
+
+@login_required
+def profileView(request):
+    page = request.GET.get('page', 'address')
+    if request.method == 'POST' and 'ADD_ADDRESS' in request.POST:
+        Address.objects.create(
+            user=request.user,
+            addressLine1=request.POST.get('addressLine1'),
+            addressLine2=request.POST.get('addressLine2'),
+            town=request.POST.get('town'),
+            county=request.POST.get('county'),
+            postcode=request.POST.get('postcode'),
+            country=request.POST.get('country'),
+            isPrimary=request.POST.get('isPrimary') == 'on'
+        )
+        messages.success(
+            request,
+            'New address added.'
+        )
+        return redirect(reverse('core:profile-view') + '?page=address')
+
+    elif request.method == 'POST' and 'UPDATE_ADDRESS' in request.POST:
+        Address.objects.filter(id=request.POST.get('address-id')).update(
+            addressLine1=request.POST.get('addressLine1'),
+            addressLine2=request.POST.get('addressLine2'),
+            town=request.POST.get('town'),
+            county=request.POST.get('county'),
+            postcode=request.POST.get('postcode'),
+            country=request.POST.get('country'),
+            isPrimary=request.POST.get('isPrimary') == 'on'
+        )
+
+        if request.POST.get('isPrimary') == 'on':
+            Address.objects.filter(Q(user=request.user), ~Q(id=request.POST.get('address-id'))).update(
+                isPrimary=False
+            )
+        messages.success(
+            request,
+            'Address update successfully.'
+        )
+        return redirect(reverse('core:profile-view') + '?page=address')
+    return render(request, 'core/profileView.html')
 
 
 @login_required

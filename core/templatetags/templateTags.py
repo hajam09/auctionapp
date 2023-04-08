@@ -4,7 +4,7 @@ from django.db.models import Avg, Q
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 
-from core.models import Item, Bid, Image, Order, Review, OrderStatus, Note
+from core.models import Item, Bid, Image, Order, Review, OrderStatus, Note, Address
 from core.utils import generalOperations
 from core.utils.navigationBar import Icon, linkItem
 
@@ -32,7 +32,7 @@ def navigationPanel(request):
         links.extend(
             [
                 linkItem('Account', '', None, [
-                    linkItem('My profile', None, Icon('', 'fa fa-user', '15')),
+                    linkItem('My profile', reverse('core:profile-view'), Icon('', 'fa fa-user', '15')),
                     linkItem('My listings', reverse('core:user-listings'), Icon('', 'fas fa-th-list', '15')),
                     linkItem('My purchases', reverse('core:user-purchases'), Icon('', 'fa fa-shopping-bag', '15')),
                     linkItem('My Bidding\'s', reverse('core:user-bids'), Icon('', 'fa fa-gavel', '15')),
@@ -1168,4 +1168,168 @@ def paginationComponent(request, objects):
         </div>
     </div>
     '''
+    return mark_safe(itemContent)
+
+
+class ProfileNavigator:
+
+    def __init__(self, internalKey, query):
+        self.internalKey = internalKey
+        self.view = reverse('core:profile-view')
+        self.query = query
+
+    def getUrl(self):
+        return f'{self.view}?page={self.query}'
+
+
+@register.simple_tag
+def renderProfileNavigationButtons(request):
+    page = request.GET.get('page', 'address')
+
+    navigations = [
+        ProfileNavigator('Address', 'address'),
+        ProfileNavigator('Notifications', 'notifications'),
+        ProfileNavigator('Payment methods', 'paymentMethods'),
+        ProfileNavigator('Settings', 'settings'),
+    ]
+    btnComponent = ''
+    for button in navigations:
+        btnClass = 'btn-primary' if page.casefold() == button.query.casefold() else 'btn-outline-primary'
+        btnComponent += f'''
+        <div class="col">
+            <a type="button" href="{button.getUrl()}" class="btn {btnClass} btn-block">{button.internalKey}</a>
+        </div>
+        '''
+
+    itemContent = f'''
+    <div class="row">
+    {btnComponent}
+    </div>
+    '''
+    return mark_safe(itemContent)
+
+
+def renderCountryDropdown(selected=None):
+    countries = Address._meta.get_field('country').choices
+    options = f'<option value="">Select your country</option>'
+
+    for country in countries:
+        isSelected = 'selected' if selected == country[0] else ''
+        options += f'<option value="{country[0]}" {isSelected}>{country[1]}</option>'
+
+    itemContent = f'''
+    <select class="form-control" name="country" required>
+        {options}
+    </select>
+    '''
+    return mark_safe(itemContent)
+
+
+def addressForm(instance=None):
+    addressLine1 = instance.addressLine1 if instance else ''
+    addressLine2 = instance.addressLine2 if instance else ''
+    town = instance.town if instance else ''
+    county = instance.county if instance else ''
+    postcode = instance.postcode if instance else ''
+    country = instance.country if instance else None
+    isPrimary = 'checked' if instance and instance.isPrimary else ''
+    itemContent = f'''
+    <div class="form-group">
+        <input type="text" class="form-control" name="addressLine1" placeholder="Address line 1" value="{addressLine1}" required>
+    </div>
+    <div class="form-group">
+        <input type="text" class="form-control" name="addressLine2" placeholder="Address line 2" value="{addressLine2}">
+    </div>
+    <div class="form-row">
+        <div class="form-group col-md-3">
+            <input type="text" class="form-control" name="town" placeholder="Town" value="{town}" required>
+        </div>
+        <div class="form-group col-md-3">
+            <input type="text" class="form-control" name="county" placeholder="County" value="{county}">
+        </div>
+        <div class="form-group col-md-3">
+            <input type="text" class="form-control" name="postcode" placeholder="Postcode" value="{postcode}" required>
+        </div>
+        <div class="form-group col-md-3">
+            {renderCountryDropdown(country)}
+        </div>
+    </div>
+    <div class="form-group">
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="isPrimary" style="height: 20px; width: 20px;" {isPrimary}>
+            <label class="form-check-label" style="padding-top: 3px;margin-left: 10px;">
+                Is this primary address?
+            </label>
+        </div>
+    </div>
+    '''
+    return itemContent
+
+
+def addressModal(request):
+    itemContent = f'''
+        <div class="modal fade" id="address-modal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <form class="modal-content" method="post">
+                    <input type="hidden" name="csrfmiddlewaretoken" value="{request.META.get('CSRF_COOKIE')}">
+                    <input type="hidden" name="ADD_ADDRESS">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add new address</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                    {addressForm()}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Add</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        '''
+    return itemContent
+
+
+def renderProfileAddressComponent(request):
+    addressList = Address.objects.filter(user=request.user).order_by('createdDttm')
+    itemContent = f'''
+    <div class="row float-right">
+        {addressModal(request)}
+        <button type="button" class="btn btn-dark" data-toggle="modal" data-target="#address-modal">Add</button>
+    </div>
+    <br></br>
+    '''
+    counter = 1
+
+    for address in addressList:
+        itemContent += f'''
+        <div class="row">
+            <form class="container" method="post">
+                <input type="hidden" name="csrfmiddlewaretoken" value="{request.META.get('CSRF_COOKIE')}">
+                    <input type="hidden" name="UPDATE_ADDRESS">
+                    <input type="hidden" name="address-id" value="{address.id}">
+                <h3>Address {counter}</h3>
+                {addressForm(address)}
+                <button type="submit" class="btn btn-primary float-right">Update</button>
+                <button class="btn btn-outline-danger float-right"
+                        style=" margin-right: 10px;"
+                        onclick="deleteAddress({address.id})">Delete</button>
+            </form>
+        </div>
+        <br>
+        '''
+        counter += 1
+    return mark_safe(itemContent)
+
+
+@register.simple_tag
+def renderProfileNavigationContents(request):
+    page = request.GET.get('page', 'address')
+    itemContent = None
+
+    if page.casefold() == 'address':
+        itemContent = renderProfileAddressComponent(request)
     return mark_safe(itemContent)
