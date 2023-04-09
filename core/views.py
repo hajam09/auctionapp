@@ -16,7 +16,7 @@ from django.utils.encoding import DjangoUnicodeDecodeError, force_str
 from django.utils.http import urlsafe_base64_decode
 
 from core.forms import LoginForm, RegistrationForm, ItemForm
-from core.models import Item, Bid, Image, OrderStatus, Order, Review, Note, Address
+from core.models import Item, Bid, Image, OrderStatus, Order, Review, Note, Address, PaymentMethod
 from core.utils import emailOperations, generalOperations
 
 
@@ -171,6 +171,43 @@ def profileView(request):
             'Address update successfully.'
         )
         return redirect(reverse('core:profile-view') + '?page=address')
+
+    elif request.method == 'POST' and 'ADD_PAYMENT_METHOD' in request.POST:
+        paymentMethod = PaymentMethod()
+        paymentMethod.user = request.user
+        paymentMethod.setCardNumber(request.POST.get('number'))
+        paymentMethod.setCvvNumber(request.POST.get('cvv'))
+        paymentMethod.name = request.POST.get('name')
+        paymentMethod.expiration = request.POST.get('expiration') + '-01'
+        paymentMethod.isPrimary = request.POST.get('isPrimary') == 'on'
+        paymentMethod.save()
+        messages.success(
+            request,
+            'New payment method added.'
+        )
+        return redirect(reverse('core:profile-view') + '?page=paymentMethods')
+
+    elif request.method == 'POST' and 'UPDATE_PAYMENT_METHOD' in request.POST:
+        paymentMethods = PaymentMethod.objects.filter(user=request.user)
+        defaultPaymentSelected = False
+
+        for pm in paymentMethods:
+            if str(pm.id) == request.POST.get('payment-method-id'):
+                pm.isPrimary = request.POST.get('isPrimary') == 'on'
+
+            if pm.isPrimary:
+                defaultPaymentSelected = True
+
+        if not defaultPaymentSelected:
+            paymentMethods[0].isPrimary = True
+
+        PaymentMethod.objects.bulk_update(paymentMethods, ['isPrimary'])
+        messages.success(
+            request,
+            'Payment method update successfully.'
+        )
+        return redirect(reverse('core:profile-view') + '?page=paymentMethods')
+
     return render(request, 'core/profileView.html')
 
 

@@ -1,5 +1,7 @@
 import random
 
+from cryptography.fernet import Fernet
+from decouple import config
 from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
@@ -282,6 +284,33 @@ class Address(BaseModel):
     postcode = models.CharField(max_length=32)
     country = models.CharField(max_length=32, choices=Country.choices, default=Country.GB)
     isPrimary = models.BooleanField(default=False)
+
+
+class PaymentMethod(BaseModel):
+    user = models.ForeignKey(User, on_delete=models.DO_NOTHING, related_name='paymentMethods')
+    number = models.CharField(max_length=256)
+    cvv = models.CharField(max_length=256)
+    name = models.CharField(max_length=256)
+    expiration = models.DateField()
+    isPrimary = models.BooleanField(default=False)
+
+    def setCardNumber(self, number):
+        fernet = Fernet(config('FERNET_KEY', cast=str))
+        self.number = fernet.encrypt(bytes(number, 'utf-8')).decode('utf-8')
+
+    @property
+    def getCardNumber(self):
+        fernet = Fernet(bytes(config('FERNET_KEY', cast=str), 'utf-8'))
+        return fernet.decrypt(bytes(self.number, 'utf-8')).decode('utf-8')
+
+    def setCvvNumber(self, number):
+        fernet = Fernet(config('FERNET_KEY', cast=str))
+        self.cvv = fernet.encrypt(bytes(number, 'utf-8')).decode('utf-8')
+
+    @property
+    def getCvvNumber(self):
+        fernet = Fernet(bytes(config('FERNET_KEY', cast=str), 'utf-8'))
+        return fernet.decrypt(bytes(self.cvv, 'utf-8')).decode('utf-8')
 
 
 class Item(BaseModel):

@@ -2,9 +2,10 @@ from django import template
 from django.core.paginator import Paginator
 from django.db.models import Avg, Q
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.safestring import mark_safe
 
-from core.models import Item, Bid, Image, Order, Review, OrderStatus, Note, Address
+from core.models import Item, Bid, Image, Order, Review, OrderStatus, Note, Address, PaymentMethod
 from core.utils import generalOperations
 from core.utils.navigationBar import Icon, linkItem
 
@@ -1266,6 +1267,49 @@ def addressForm(instance=None):
     return itemContent
 
 
+def paymentMethodForm(instance=None):
+    number = instance.getCardNumber if instance else ''
+    name = instance.name if instance else ''
+    expiration = instance.expiration if instance else ''
+    cvv = instance.getCvvNumber if instance else ''
+    isPrimary = 'checked' if instance and instance.isPrimary else ''
+    minExpiryDate = timezone.now().strftime('%Y-%m')
+    maxExpiryDate = f"{int(timezone.now().strftime('%Y')) + 5}-{timezone.now().strftime('%m')}"
+    disabled = 'disabled' if instance else ''
+
+    itemContent = f'''
+    <div class="form-row">
+        <div class="form-group col-md-6">
+            <input type="text" class="form-control" name="number" placeholder="Card number" value="{number}"
+                    maxlength="16" {disabled} required>
+        </div>
+        <div class="form-group col-md-6">
+            <input type="text" class="form-control" name="name" placeholder="Name on card" value="{name}"
+                    {disabled} required>
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group col-md-6">
+            <input type="month" class="form-control" name="expiration" placeholder="Expiration date"
+                    min="{minExpiryDate}" max="{maxExpiryDate}" value="{expiration}" {disabled} required>
+        </div>
+        <div class="form-group col-md-6">
+            <input type="password" class="form-control" name="cvv" placeholder="CVV" maxlength="3" value="{cvv}"
+                    {disabled} required>
+        </div>
+    </div>
+    <div class="form-group">
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="isPrimary" style="height: 20px; width: 20px;" {isPrimary}>
+            <label class="form-check-label" style="padding-top: 3px;margin-left: 10px;">
+                Should we use this as default payment method?
+            </label>
+        </div>
+    </div>
+    '''
+    return itemContent
+
+
 def addressModal(request):
     itemContent = f'''
         <div class="modal fade" id="address-modal" tabindex="-1" role="dialog" aria-hidden="true">
@@ -1281,6 +1325,33 @@ def addressModal(request):
                     </div>
                     <div class="modal-body">
                     {addressForm()}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Add</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        '''
+    return itemContent
+
+
+def paymentMethodModal(request):
+    itemContent = f'''
+        <div class="modal fade" id="payment-method-modal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <form class="modal-content" method="post">
+                    <input type="hidden" name="csrfmiddlewaretoken" value="{request.META.get('CSRF_COOKIE')}">
+                    <input type="hidden" name="ADD_PAYMENT_METHOD">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add new payment method</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                    {paymentMethodForm()}
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
@@ -1309,14 +1380,43 @@ def renderProfileAddressComponent(request):
         <div class="row">
             <form class="container" method="post">
                 <input type="hidden" name="csrfmiddlewaretoken" value="{request.META.get('CSRF_COOKIE')}">
-                    <input type="hidden" name="UPDATE_ADDRESS">
-                    <input type="hidden" name="address-id" value="{address.id}">
+                <input type="hidden" name="UPDATE_ADDRESS">
+                <input type="hidden" name="address-id" value="{address.id}">
                 <h3>Address {counter}</h3>
                 {addressForm(address)}
                 <button type="submit" class="btn btn-primary float-right">Update</button>
-                <button class="btn btn-outline-danger float-right"
-                        style=" margin-right: 10px;"
+                <button class="btn btn-outline-danger float-right" style=" margin-right: 10px;"
                         onclick="deleteAddress({address.id})">Delete</button>
+            </form>
+        </div>
+        <br>
+        '''
+        counter += 1
+    return mark_safe(itemContent)
+
+
+def renderPaymentMethodsComponent(request):
+    itemContent = f'''
+    <div class="row float-right">
+        {paymentMethodModal(request)}
+        <button type="button" class="btn btn-dark" data-toggle="modal" data-target="#payment-method-modal">Add</button>
+    </div>
+    <br></br>
+    '''
+    counter = 1
+
+    for paymentMethod in PaymentMethod.objects.filter(user=request.user).order_by('createdDttm'):
+        itemContent += f'''
+        <div class="row">
+            <form class="container" method="post">
+                <input type="hidden" name="csrfmiddlewaretoken" value="{request.META.get('CSRF_COOKIE')}">
+                <input type="hidden" name="UPDATE_PAYMENT_METHOD">
+                <input type="hidden" name="payment-method-id" value="{paymentMethod.id}">
+                <h3>Address {counter}</h3>
+                {paymentMethodForm(paymentMethod)}
+                <button type="submit" class="btn btn-primary float-right">Update</button>
+                <button class="btn btn-outline-danger float-right" style=" margin-right: 10px;"
+                        onclick="deletePaymentMethod({paymentMethod.id})">Delete</button>
             </form>
         </div>
         <br>
@@ -1332,4 +1432,7 @@ def renderProfileNavigationContents(request):
 
     if page.casefold() == 'address':
         itemContent = renderProfileAddressComponent(request)
+    elif page.casefold() == 'paymentmethods':
+        itemContent = renderPaymentMethodsComponent(request)
+
     return mark_safe(itemContent)

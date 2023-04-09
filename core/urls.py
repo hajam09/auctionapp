@@ -30,4 +30,9 @@ urlpatterns += [
         AddressObjectApiEventVersion1Component.as_view(),
         name='addressObjectApiEventVersion1Component'
     ),
+    path(
+        'api/v1/paymentMethodObjectApiEventVersion1Component/',
+        PaymentMethodObjectApiEventVersion1Component.as_view(),
+        name='paymentMethodObjectApiEventVersion1Component'
+    ),
 ]
