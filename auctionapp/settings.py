@@ -135,7 +135,7 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'core/static'),
 ]
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
-LOGIN_URL = '/core/login'
+LOGIN_URL = '/login'
 
 # =============
 # Email Settings

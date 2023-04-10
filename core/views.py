@@ -208,6 +208,26 @@ def profileView(request):
         )
         return redirect(reverse('core:profile-view') + '?page=paymentMethods')
 
+    elif request.method == 'POST' and 'UPDATE_PERSONAL_SETTINGS' in request.POST:
+        request.user.first_name = request.POST.get('firstName')
+        request.user.last_name = request.POST.get('lastName')
+        request.user.email = request.POST.get('email')
+
+        if request.POST.get('password'):
+            if generalOperations.isPasswordStrong(request.POST.get('password')):
+                request.user.set_password(request.POST.get('password'))
+            else:
+                messages.error(
+                    request,
+                    'Password is not strong enough.'
+                )
+        request.user.save()
+        messages.success(
+            request,
+            'Personal details updated successfully.'
+        )
+        return redirect(reverse('core:profile-view') + '?page=settings')
+
     return render(request, 'core/profileView.html')
 
 

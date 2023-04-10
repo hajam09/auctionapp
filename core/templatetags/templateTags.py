@@ -1270,7 +1270,7 @@ def addressForm(instance=None):
 def paymentMethodForm(instance=None):
     number = instance.getCardNumber if instance else ''
     name = instance.name if instance else ''
-    expiration = instance.expiration if instance else ''
+    expiration = instance.expiration.strftime("%Y-%m") if instance else ''
     cvv = instance.getCvvNumber if instance else ''
     isPrimary = 'checked' if instance and instance.isPrimary else ''
     minExpiryDate = timezone.now().strftime('%Y-%m')
@@ -1412,7 +1412,7 @@ def renderPaymentMethodsComponent(request):
                 <input type="hidden" name="csrfmiddlewaretoken" value="{request.META.get('CSRF_COOKIE')}">
                 <input type="hidden" name="UPDATE_PAYMENT_METHOD">
                 <input type="hidden" name="payment-method-id" value="{paymentMethod.id}">
-                <h3>Address {counter}</h3>
+                <h3>Payment method {counter}</h3>
                 {paymentMethodForm(paymentMethod)}
                 <button type="submit" class="btn btn-primary float-right">Update</button>
                 <button class="btn btn-outline-danger float-right" style=" margin-right: 10px;"
@@ -1425,6 +1425,40 @@ def renderPaymentMethodsComponent(request):
     return mark_safe(itemContent)
 
 
+def renderAccountSettingsComponent(request):
+    itemContent = f'''
+    <div class="row">
+        <form class="container" method="post">
+            <input type="hidden" name="csrfmiddlewaretoken" value="{request.META.get('CSRF_COOKIE')}">
+            <input type="hidden" name="UPDATE_PERSONAL_SETTINGS">
+            <h3>Personal details</h3>
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <input type="text" class="form-control" name="firstName" placeholder="First name"
+                            value="{request.user.first_name}" required>
+                </div>
+                <div class="form-group col-md-6">
+                    <input type="text" class="form-control" name="lastName" placeholder="Last name"
+                            value="{request.user.last_name}" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <input type="email" class="form-control" name="email" placeholder="E-mail"
+                            value="{request.user.email}" required>
+                </div>
+                <div class="form-group col-md-6">
+                    <input type="password" class="form-control" name="password" placeholder="Password (Optional)">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary float-right">Update</button>
+        </form>
+    </div>
+    <br></br>
+    '''
+    return mark_safe(itemContent)
+
+
 @register.simple_tag
 def renderProfileNavigationContents(request):
     page = request.GET.get('page', 'address')
@@ -1434,5 +1468,7 @@ def renderProfileNavigationContents(request):
         itemContent = renderProfileAddressComponent(request)
     elif page.casefold() == 'paymentmethods':
         itemContent = renderPaymentMethodsComponent(request)
+    elif page.casefold() == 'settings':
+        itemContent = renderAccountSettingsComponent(request)
 
     return mark_safe(itemContent)
