@@ -1,0 +1,48 @@
+{% extends "core/base.html" %}
+{% load templateTags %}
+{% load static %}
+{% block content %}
+    <div class="container">
+        <br>
+        {% renderProfileNavigationButtons request %}
+        <br>
+        {% renderProfileNavigationContents request %}
+    </div>
+    <script>
+        function deleteAddress(id) {
+            fetch('{% url 'core:addressObjectApiEventVersion1Component' %}', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Encoding': 'gzip',
+                    'Content-type': 'application/json',
+                    "X-CSRFToken": getCookie("csrftoken")
+                },
+                dataType: 'json',
+                body: JSON.stringify({'id': id})
+            }).then((response) => response.json())
+                .then((json) => {
+                    if (json.success) {
+                        location.reload();
+                    }
+                });
+        }
+
+        function deletePaymentMethod(id) {
+            fetch('{% url 'core:paymentMethodObjectApiEventVersion1Component' %}', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Encoding': 'gzip',
+                    'Content-type': 'application/json',
+                    "X-CSRFToken": getCookie("csrftoken")
+                },
+                dataType: 'json',
+                body: JSON.stringify({'id': id})
+            }).then((response) => response.json())
+                .then((json) => {
+                    if (json.success) {
+                        location.reload();
+                    }
+                });
+        }
+    </script>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% load templateTags %}
+{% block content %}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/deliverInfoProgressBar.css' %}"/>
+    <br>
+    <div class="container">
+        {% renderOrderDetailViewComponent request order %}
+    </div>
+    <div class="container">
+        {% renderOrderNotes request order %}
+    </div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block content %}
+    <br>
+    <div class="container">
+        <div class="row">
+            <table class="table">
+                <thead class="thead-dark">
+                <tr>
+                    <th scope="col">Bidder</th>
+                    <th scope="col">Bid Amount</th>
+                    <th scope="col">Bid Time</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for bid in bids %}
+                    <tr>
+                        <th scope="row">{{ bid.bidder.email }}</th>
+                        <td>£{{ bid.price }}</td>
+                        <td>{{ bid.createdDttm|date:'d M Y H:i:s' }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "core/base.html" %}
+{% load templateTags %}
+{% load static %}
+{% block content %}
+    <br>
+    <div class="container">
+        <div class="row">
+            <table class="table">
+                <thead class="thead-dark">
+                <tr>
+                    <th scope="col">Item No.</th>
+                    <th scope="col">Bid Amount</th>
+                    <th scope="col">Current Price</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Action</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for bid in bids %}
+                    {% renderUserBidsTable bid latestPriceForEachBids %}
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <br>
+        {% paginationComponent request bids %}
+    </div>
+{% endblock %}

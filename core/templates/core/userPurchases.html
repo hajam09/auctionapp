@@ -1,0 +1,20 @@
+{% extends "core/base.html" %}
+{% load templateTags %}
+{% load static %}
+{% block content %}
+    <br>
+    <div class="container">
+        {% querySearchComponent request %}
+        <br><br>
+        <div class="row">
+            <div class="col-md-12" style="width: 1100px;">
+                {% for order in orderList %}
+                    {% renderItemCatalogue request order.item showItemImage='True' showSeller='False' showItemSellingDetails='False' showPurchaseOrderDetails='True' showItemPricingAndReviewDetails='False' showOrderDetailsAndMoreAction='True' order=order orderStatusList=orderStatusList %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <br>
+        {% paginationComponent request orderList %}
+    </div>
+{% endblock %}
